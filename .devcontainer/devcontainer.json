@@ -1,0 +1,13 @@
+{
+  "name": "C/C++ DevContainer",
+  "dockerFile": "../Dockerfile", // Adjust the path to your Dockerfile
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": [
+    "ms-vscode.cpptools" // Install the C/C++ extension for Visual Studio Code
+  ],
+  "mounts": [
+    "source=${localWorkspaceFolder}/path/to/your/code,target=/workspace,type=bind"
+  ]
+}
