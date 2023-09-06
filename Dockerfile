@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     valgrind \
+    cppcheck \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory inside the container

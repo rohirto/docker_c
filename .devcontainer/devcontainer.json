@@ -2,10 +2,13 @@
   "name": "C/C++ DevContainer",
   "dockerFile": "../Dockerfile", // Adjust the path to your Dockerfile
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash"
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "cppcheck.enable": true,
+    "cppcheck.path": "/usr/bin/cppcheck"
   },
   "extensions": [
-    "ms-vscode.cpptools" // Install the C/C++ extension for Visual Studio Code
+    "ms-vscode.cpptools", // Install the C/C++ extension for Visual Studio Code
+    "jbenden.c-cpp-flylint"
   ],
   "mounts": [
     "source=${localWorkspaceFolder}/path/to/your/code,target=/workspace,type=bind"
