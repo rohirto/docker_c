@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "calculations.h"
 
-int calculate_sum(const int arr[], size_t length)
+int calculate_sum( int arr[], size_t length)
 {
     int sum = 0;
     int i = 0;

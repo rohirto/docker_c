@@ -2,3 +2,4 @@
 c/build/
 cpp/build/
 freertos_sim/
+gtest/build/
