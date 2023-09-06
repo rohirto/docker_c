@@ -2,12 +2,12 @@
 
 // Function to perform selection sort
 void selectionSort(int arr[], int size) {
-    int i, j, minIndex, temp;
+    int i, j;
 
     // Traverse through the entire array
     for (i = 0; i < size - 1; i++) {
         // Find the minimum element in the remaining unsorted array
-        minIndex = i;
+        int minIndex = i;
         for (j = i + 1; j < size; j++) {
             if (arr[j] < arr[minIndex]) {
                 minIndex = j;
@@ -15,7 +15,7 @@ void selectionSort(int arr[], int size) {
         }
 
         // Swap the found minimum element with the current element
-        temp = arr[i];
+        int temp = arr[i];
         arr[i] = arr[minIndex];
         arr[minIndex] = temp;
     }

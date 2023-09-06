@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 // Function to perform binary search on a sorted array
-int binarySearch(int arr[], int size, int target) {
+int binarySearch(const int arr[], int size, int target) {
     int left = 0;
     int right = size - 1;
 

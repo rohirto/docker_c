@@ -16,7 +16,7 @@ int sum(int N, ...)
     for (loop = 0; loop < N; loop++) {
         sum += va_arg(va, int);
     }
-
+    va_end(va);
     return sum;
 }
 
