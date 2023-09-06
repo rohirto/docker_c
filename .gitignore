@@ -1,3 +1,4 @@
 #ignore build folders
 c/build/
 cpp/build/
+freertos_sim/
