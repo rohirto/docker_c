@@ -150,7 +150,7 @@ void print_array(int arr[], int len)
     printf("\n");
 }
 int main() {
-    int n1,n2,n3, i, j, temp;
+    int n1,n2,n3, i, j;
 
     printf("Enter the number of elements in the array1: ");
     scanf("%d", &n1);
