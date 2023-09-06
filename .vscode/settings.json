@@ -3,5 +3,12 @@
         "pthread.h": "c",
         "stdio.h": "c",
         "calculations.h": "c"
-    }
+    },
+    "c-cpp-flylint.clang.enable": false,
+    "c-cpp-flylint.cppcheck.enable": true,
+    "c-cpp-flylint.flawfinder.enable": false,
+    "c-cpp-flylint.flexelint.enable": false,
+    "c-cpp-flylint.lizard.enable": false,
+    "c-cpp-flylint.pclintplus.enable": false
+
 }
