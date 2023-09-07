@@ -13,9 +13,13 @@ FetchContent_Declare(
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
-
 include(CTest)
 enable_testing()
+
+add_subdirectory(../c)
+add_subdirectory(../cpp)
+
+add_library(factorial factorial.c factorial.h)
 
 add_executable(
   hello_test
@@ -23,6 +27,7 @@ add_executable(
 )
 target_link_libraries(
   hello_test
+  factorial
   GTest::gtest_main
 )
 
