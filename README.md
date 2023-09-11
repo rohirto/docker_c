@@ -15,3 +15,11 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 ### Features - Debugging
 1. Can use gdb debugger. Already Launch.json has been configured to do the debugging
 2. On the left most pane - select Run and Debug Option
+
+### Features - Static Code Analyzer
+1. cppcheck used as static code analyzer
+2. vscode extension fly lint is used to integrate vscode with cppcheck
+
+### Features - Google Test
+1. Used for Unit testing
+   
