@@ -22,4 +22,10 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 
 ### Features - Google Test
 1. Used for Unit testing
+
+### Valgrind Memory Debugging
+1. First compile the program using ctrl+shift+ p -> Build C program
+2. Make the file executable using ctrl+shift+p -> Make file execuatable
+3. Run the Valgrind on file using ctrl+shift+p -> Run using Valgrind
+
    
