@@ -28,4 +28,8 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 2. Make the file executable using ctrl+shift+p -> Make file execuatable
 3. Run the Valgrind on file using ctrl+shift+p -> Run using Valgrind
 
+### Ncurses
+1. Codespace to play with ncurses library
+2. Compile the code with Ctrl+shift+p -> Build ncurses c program
+3. Run the code ctrl+shift+p -> run program
    
