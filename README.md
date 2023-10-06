@@ -32,4 +32,9 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 1. Codespace to play with ncurses library
 2. Compile the code with Ctrl+shift+p -> Build ncurses c program
 3. Run the code ctrl+shift+p -> run program
+
+### C++ Notebook
+1. Using Xeus-Cling for this purpose
+2. Using notebook gives a more interactive way to learn cpp
+3.
    
