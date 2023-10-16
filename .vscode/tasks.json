@@ -25,6 +25,7 @@
             "type": "shell",
             "command": "gcc",
             "args": [
+                "-Wall",
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
