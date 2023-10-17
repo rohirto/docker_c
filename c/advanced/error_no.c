@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 int main() 
 {
@@ -18,5 +19,7 @@ int main()
     if (file == NULL) {
         perror("Error opening file");
     }
+    assert(file != NULL);
+    fclose(file);
     return 0;
 }

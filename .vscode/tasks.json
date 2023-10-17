@@ -59,12 +59,17 @@
             "group": "build",
             "detail": "Using flag -lpthread."
         },
-        
         {
             "label": "C/C++: g++ build active file (with -lm)",
             "type": "shell",
             "command": "g++",
-            "args": ["-g", "${file}", "-o", "${fileDirname}/../build/${fileBasenameNoExtension}.out", "-lm"],
+            "args": [
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-lm"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -72,8 +77,65 @@
             "options": {
                 "cwd": "${fileDirname}"
             },
-            "problemMatcher": ["$gcc"],
+            "problemMatcher": [
+                "$gcc"
+            ],
             "detail": "-lm flag needed for math.h."
+        },
+        {
+            "label": "Build Library",
+            "type": "shell",
+            "command": "make",
+            "args": ["-C", "${workspaceFolder}/archive_lib", "all"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/archive_lib"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+            "detail": "Build a static archive library of all C files in archive_lib folder"
+        },
+        {
+            "label": "Build C file using Archive Lib",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "${file}",
+                "-o",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-L${workspaceFolder}/archive_lib",
+                "-lmylib"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+            "detail": "libmylib.a at archive_lib"
         },
         {
             "label": "Run with Valgrind",
