@@ -3,4 +3,4 @@ c/build/
 cpp/build/
 freertos_sim/
 g_test/build/
-c/make_tutorial/build_dir
+make_tutorial/build_dir
