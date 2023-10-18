@@ -83,7 +83,7 @@
             "detail": "-lm flag needed for math.h."
         },
         {
-            "label": "Build Library",
+            "label": "Build Static Library",
             "type": "shell",
             "command": "make",
             "args": ["-C", "${workspaceFolder}/archive_lib", "all"],
@@ -125,7 +125,7 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["relative", "${workspaceFolder}"],
+                "fileLocation": ["relative", "${workspaceFolder}/archive_lib"],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                     "file": 1,
@@ -136,6 +136,37 @@
                 }
             },
             "detail": "libmylib.a at archive_lib"
+        },
+        {
+            "label": "Build Shared Library",
+            "type": "shell",
+            "command": "make",
+            "args": ["-C", "${workspaceFolder}/shared_lib"],
+            "options": {
+                "cwd": "${workspaceFolder}/shared_lib"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Build C File using Shared Lib",
+            "type": "shell",
+            "command": "gcc",
+            "args": ["${file}", "-o", "${fileDirname}/../build/${fileBasenameNoExtension}.out","-I${workspaceFolder}/include","-L${workspaceFolder}/shared_lib", "-lmylib", "-Wl,-rpath=${workspaceFolder}/shared_lib"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
         },
         {
             "label": "Run with Valgrind",

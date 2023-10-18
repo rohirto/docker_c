@@ -6,3 +6,13 @@
  * $ gcc -shared -fPIC -o libtest.so test1.o test2.o
  * $ gcc -o app app.o -L. –ltest
 */
+// main.c
+#include <stdio.h>
+#include "mathfuncs.h"
+
+int main() {
+    int a = 10, b = 5;
+    printf("Addition: %d\n", add(a, b));
+    printf("Subtraction: %d\n", subtract(a, b));
+    return 0;
+}

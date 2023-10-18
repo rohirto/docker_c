@@ -33,4 +33,19 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 2. Compile the code with Ctrl+shift+p -> Build ncurses c program
 3. Run the code ctrl+shift+p -> run program
 
+### Static Library - Archive
+1. Build the Library by ctrl+shift+P -> Build Archive Library
+2. Above task invokes a Make file in archive_lib folder, all the source files in archive lib are compiled and object files are bundled into a libmylib.a file
+3. This file can be included in any other C file by opening the C file in editor, then ctrl+shift+p -> Build C file using static library
+4. For example see c/advanced/archives.c
+
+### Shared Library 
+1. Build the Library by ctrl+shift+P -> Build Shared Library
+2. Above task invokes a Makefile in shared_lib folder, all the source files gets compiled and shared library with a version no is created. Additionally a symbolic link to shared library is created to reference it in gcc command
+3. The functions which are to be used, its protoype must be included in include/(any_heaher).h
+4. This file can be included in any other C file by opening the C file in editor, then ctrl+shift+p -> Build C file using Shared Library
+5. For example see c/advanced/shared_lib.c
+
+### Include Folder
+1. Includes all .h files which are used by static and shared libraries or our C libraries
    
