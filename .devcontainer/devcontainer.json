@@ -11,6 +11,6 @@
     "jbenden.c-cpp-flylint"
   ],
   "mounts": [
-    "source=${localWorkspaceFolder}/path/to/your/code,target=/workspace,type=bind"
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
   ]
 }

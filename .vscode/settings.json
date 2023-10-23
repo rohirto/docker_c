@@ -18,6 +18,7 @@
     "c-cpp-flylint.flawfinder.enable": false,
     "c-cpp-flylint.flexelint.enable": false,
     "c-cpp-flylint.lizard.enable": false,
-    "c-cpp-flylint.pclintplus.enable": false
+    "c-cpp-flylint.pclintplus.enable": false,
+    "cmake.configureOnOpen": false
 
 }

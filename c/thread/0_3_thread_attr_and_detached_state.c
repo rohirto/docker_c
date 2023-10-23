@@ -15,6 +15,8 @@ void* thread_function(void* thread_arg)
     printf("Thread running\n");
     sleep(2);
 
+    return NULL;
+
 }
 
 int main() {
