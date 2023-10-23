@@ -7,7 +7,7 @@
         "program": "${fileDirname}/../build/${fileBasenameNoExtension}.out",
         "args": [],
         "stopAtEntry": false,
-        "cwd": "${fileDirname}",
+        "cwd": "${fileDirname}/../build",
         "environment": [],
         "externalConsole": false,
         "MIMode": "gdb",
@@ -23,8 +23,7 @@
             "text": "-gdb-set disassembly-flavor intel",
             "ignoreFailures": true
           }
-        ],
-        "preLaunchTask": "C/C++: g++ build active file"
+        ]
       }
     ],
     "version": "2.0.0"
