@@ -25,16 +25,13 @@
             "label": "Run Program",
             "type": "shell",
             "command": "cd ${fileDirname}/../build && ./${fileBasenameNoExtension}.out",
-            "group": {
-              "kind": "build",
-              "isDefault": true
-            },
+            "group": "build",
             "presentation": {
-              "reveal": "always",
-              "panel": "new"
+                "reveal": "always",
+                "panel": "new"
             },
             "options": {
-              "externalTerminal": true  // Important: Run in an external terminal
+                "externalTerminal": true
             },
             "detail": "without any arguments passed"
         },
@@ -70,10 +67,7 @@
                 "${fileDirname}/../build/${fileBasenameNoExtension}.out",
                 "-lm"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "options": {
                 "cwd": "${fileDirname}"
             },
@@ -86,11 +80,12 @@
             "label": "Build Static Library",
             "type": "shell",
             "command": "make",
-            "args": ["-C", "${workspaceFolder}/archive_lib", "all"],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "args": [
+                "-C",
+                "${workspaceFolder}/archive_lib",
+                "all"
+            ],
+            "group": "build",
             "problemMatcher": {
                 "owner": "cpp",
                 "fileLocation": [
@@ -119,13 +114,13 @@
                 "-L${workspaceFolder}/archive_lib",
                 "-lmylib"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["relative", "${workspaceFolder}/archive_lib"],
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/archive_lib"
+                ],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                     "file": 1,
@@ -141,14 +136,14 @@
             "label": "Build Shared Library",
             "type": "shell",
             "command": "make",
-            "args": ["-C", "${workspaceFolder}/shared_lib"],
+            "args": [
+                "-C",
+                "${workspaceFolder}/shared_lib"
+            ],
             "options": {
                 "cwd": "${workspaceFolder}/shared_lib"
             },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -158,11 +153,16 @@
             "label": "Build C File using Shared Lib",
             "type": "shell",
             "command": "gcc",
-            "args": ["${file}", "-o", "${fileDirname}/../build/${fileBasenameNoExtension}.out","-I${workspaceFolder}/include","-L${workspaceFolder}/shared_lib", "-lmylib", "-Wl,-rpath=${workspaceFolder}/shared_lib"],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "args": [
+                "${file}",
+                "-o",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-I${workspaceFolder}/include",
+                "-L${workspaceFolder}/shared_lib",
+                "-lmylib",
+                "-Wl,-rpath=${workspaceFolder}/shared_lib"
+            ],
+            "group": "build",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -172,11 +172,11 @@
             "label": "Run with Valgrind",
             "type": "shell",
             "command": "valgrind",
-            "args": ["--tool=memcheck", "${fileDirname}/../build/${fileBasenameNoExtension}.out"],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "args": [
+                "--tool=memcheck",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out"
+            ],
+            "group": "build",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -193,12 +193,9 @@
             "command": "chmod",
             "args": [
                 "+x",
-                "${fileDirname}/../build/${fileBasenameNoExtension}.out"  // Replace with the actual path to your file
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -219,7 +216,6 @@
                 "-lncurses",
                 "-o",
                 "${fileDirname}/../build/${fileBasenameNoExtension}.out"
-                
             ],
             "options": {
                 "cwd": "${fileDirname}"
@@ -234,17 +230,37 @@
             "label": "Run Program in Background",
             "type": "shell",
             "command": "cd ${fileDirname}/../build && ./${fileBasenameNoExtension}.out &",
-            "group": {
-              "kind": "build",
-              "isDefault": true
-            },
+            "group": "build",
             "presentation": {
-              "reveal": "always",
-              "panel": "shared"
+                "reveal": "always",
+                "panel": "shared"
             },
             "options": {
-              "externalTerminal": true  // Important: Run in an external terminal
+                "externalTerminal": true
             }
+        },
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++ build active file",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Task generated by Debugger."
         }
     ],
     "version": "2.0.0"
