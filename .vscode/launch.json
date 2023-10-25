@@ -5,7 +5,8 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${fileDirname}/../build/${fileBasenameNoExtension}.out",
-        "args": [],
+        //"args": [],  //If no args are needed
+        "args": ["checkip.dyndns.org"],  //If args needs to be passed
         "stopAtEntry": false,
         "cwd": "${fileDirname}/../build",
         "environment": [],

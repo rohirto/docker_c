@@ -11,7 +11,8 @@
         "mathfuncs.h": "c",
         "stdlib.h": "c",
         "unistd.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "un.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,
