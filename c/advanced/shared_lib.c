@@ -11,8 +11,10 @@
 #include "mathfuncs.h"
 
 int main() {
+    extern int a_n;
     int a = 10, b = 5;
     printf("Addition: %d\n", add(a, b));
     printf("Subtraction: %d\n", subtract(a, b));
+    printf("extern variable: %d", a_n);
     return 0;
 }
