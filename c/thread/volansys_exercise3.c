@@ -145,7 +145,9 @@ void read_file(char* r_map, char* buffer, size_t size)
     memcpy(buffer,c,size);
         
     printf("Read File before Encryption: \n");
-    printf("%s\n",buffer);
+    //printf("%s\n",buffer);
+    fwrite(buffer,1,size,stdout);
+    fflush(stdout);
 
     sem_post(&read_count);
 
@@ -157,7 +159,9 @@ void write_file(char* w_map, char* buffer, size_t size)
     memcpy(c,buffer,size);
 
     printf("Write File: \n");
-    printf("%s\n",buffer);
+    //printf("%s\n",buffer);
+    fwrite(buffer,1,size,stdout);
+    fflush(stdout);
 
 }
 
@@ -176,8 +180,8 @@ void* thread_function(void* arg)
     /* Apply Encryption */
     encrypt(buff,FILE_SIZE);
 
-    printf("Read File After Encryption: \n");
-    printf("%s\n",buff);
+    //printf("Read File After Encryption: \n");
+    //printf("%s\n",buff);
 
     /* Write to new file */
     write_file(p->file_mem_w, buff,FILE_SIZE);

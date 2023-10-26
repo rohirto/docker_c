@@ -193,7 +193,8 @@
             "command": "chmod",
             "args": [
                 "+x",
-                "${fileDirname}/../build/${fileBasenameNoExtension}.out"
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-s"
             ],
             "group": "build",
             "presentation": {
