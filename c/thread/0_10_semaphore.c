@@ -9,8 +9,8 @@
  *      1. Wait op - decrement the counter by 1 till it becomes 0, block threads from here, until the counter again becomes positive
  *      2. Post op - increments the value of counter by 1
  * 2 implementations
- *      1. Communication among threads  - explained here
- *      2. Communication among Processes -will be explained in IPC
+ *      1. Communication among threads  - explained here   -- POSIX semaphore
+ *      2. Communication among Processes -will be explained in IPC  -- System V semaphore
  * 
  * This code also consists example of Conditional Variable (A flag to control the behaviour of thread)
  * A smart technique to exit a thread waiting on a sempahore is used: 
@@ -19,7 +19,7 @@
 
 #include <malloc.h>
 #include <pthread.h>
-#include <semaphore.h>
+#include <semaphore.h>  //POSIX Semaphore, different implementation than <sys/sem.h> which is System V semaphore
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>

@@ -1,13 +1,15 @@
 /**
  * Using shared memory and binary semaphore with each other
  * Shared memory does not have any inherent synchronization method which is now provided by semaphore
+ * 
+ * System V Semaphores needs to be delinked through ipcrm -s <semaphore id>
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/sem.h>
+#include <sys/sem.h>  //System V Semaphore
 #include <sys/wait.h>
 
 // Define the buffer size and the key for shared memory and semaphores

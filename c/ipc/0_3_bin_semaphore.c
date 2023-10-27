@@ -11,9 +11,11 @@
  * Debugging Semaphores 
  *  Use the command ipcs -s to display information about existing semaphore sets
  * Use the ipcrm sem command to remove a semaphore set from the command line
+ * 
+ * This is System V Semaphore and is different from Semaphores in threads which is POSIX Semaphore
 */
 #include <sys/ipc.h>
-#include <sys/sem.h>
+#include <sys/sem.h>  //System V Semaphore
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
