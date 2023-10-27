@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     git \
     valgrind \
     cppcheck \
+     libncurses-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install required dependencies
@@ -20,9 +21,9 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Lib ncurses installation
-RUN apt-get update && \
-    apt-get install libncurses-dev \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && \
+#     apt-get install libncurses-dev \
+#     && rm -rf /var/lib/apt/lists/*
 
 # # Install wget, bash, and other required utilities
 # RUN apt-get update && apt-get install -y wget bash && rm -rf /var/lib/apt/lists/*
