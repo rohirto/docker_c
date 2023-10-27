@@ -12,6 +12,9 @@
 #define MAX_LINE 80
 #define MAX_ARGS 10
 
+#define WRITE_END   1
+#define READ_END    0
+
 
 
 void chck_exit(char *cmd)
@@ -93,22 +96,14 @@ void exec_command(char* command_list[], int cmdCount)
 
         if (childpid == 0) 
         {
-            if (i > 0) 
-            {
-                // Redirect input from the previous pipe
-                dup2(fds[0], 0);
-                close(fds[0]);
-            }
 
-            if (i < cmdCount - 1) // No of Pipes 
-            {
-                /* Connect the write end of the pipe to standard input. */
-                dup2(fds[1], STDOUT_FILENO);
-                close(fds[1]);
-            }
+            /* Connect the write end of the pipe to standard input. */
+            dup2(fds[READ_END], STDIN_FILENO);
+            close(fds[WRITE_END]);
+            close(fds[READ_END]);
 
             /* This is the child process. Close our copy of the write end of the file descriptor. */
-            close(fds[1]);
+            //close(fds[1]);
             // Child process
             execvp(args[0], args); // Execute the command
 
@@ -116,6 +111,8 @@ void exec_command(char* command_list[], int cmdCount)
         else if (childpid > 0) 
         {
             // Parent process
+
+
             waitpid(childpid, &status, 0); // Wait for the child to finish
 
             for (i = 0; i < cmdCount -1; i++)
