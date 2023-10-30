@@ -156,6 +156,9 @@ int main()
         //Check Pipes
         no_of_cmd = check_pipes(cmd,piped_cmds);
 
+        //validate user input
+        
+
         //execute the commands
         exec_command(piped_cmds, no_of_cmd);
 
