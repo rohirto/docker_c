@@ -1,6 +1,12 @@
 
 # API Reference: 
 
+## Review by Paras Sir
+Fork and no of process formula : n forks leads to 2n - 1 processes. Eg 4 Forks - (2*4 -1) = 7 Processes
+
+From terminal kill -9 <pid> : -9 is the 9th Signal (SIGKILL), enter kill -l to see all the list of signals that can be sent from kill command
+
+## APIs:
 1. **#include <sys/types.h>:** This is a header file that provides data types used in system calls and other library functions.
 
 2. **#include <unistd.h>:** This header file provides access to various POSIX operating system API functions.
