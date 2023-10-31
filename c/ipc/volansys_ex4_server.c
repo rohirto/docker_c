@@ -38,7 +38,8 @@ int main()
     
     // Initialize server address structure
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
+    server_addr.sin_port = htons(PORT);   /* htons host to network short -convert the numbers to Network Byte Order before they go out on the wire, and
+                                            convert them to Host Byte Order as they come in off the wire */
     server_addr.sin_addr.s_addr = INADDR_ANY;
     
     // Bind the socket to the server address
