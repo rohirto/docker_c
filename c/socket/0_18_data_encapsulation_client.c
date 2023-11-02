@@ -7,13 +7,36 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <stdbool.h>
 
 #define SERVER_IP "127.0.0.1" // Replace with the server's IP address
 #define SERVER_PORT "9034"    // Replace with the server's port
 
 
+//Function Prototypes
+void print_msg(char *, int );
+void *get_in_addr(struct sockaddr *);
+int sendall_stream(int , char *, int *);
+int recvall_stream(int , char *, int *);
+int recv_msg(int , void*  );
+int send_msg(int , void* , int , const char* );
+
+//Structs
+struct packet
+{
+    unsigned char len;          //1 byte
+    unsigned char username[8];  // 8 Byte
+    unsigned char message[128]; //128 Bytes
+
+
+};
+
+//Global Variables
+bool send_msg_flag = false;
+
 /**
  * get sockaddr, IPv4 or IPv6:
+ * Used to fill up the structs needed to get sockets going
  * */ 
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -46,6 +69,9 @@ int sendall_stream(int s, char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
+/**
+ * To reliably receive data over sock stream
+*/
 int recvall_stream(int s, char *buf, int *len)
 {
     int total = 0;        // how many bytes we've received
@@ -76,17 +102,26 @@ int recvall_stream(int s, char *buf, int *len)
  * 18       42 65 6E 6A 61 6D 69 6E 48 65 79 20 67 75 79 73 20 77 ...
  * (length) B e n j a m i n          H e y g u y s w ...
 */
+/**
+ * Receive Protocol Packet by Client
+ * Data is encapsulated into our protocol, this fucntion will remove that encapsulation and send the data to next layer
+*/
 int recv_msg(int i, void* buffer )
 {
-    int packet_len; 
-    if(recv(i, &packet_len, 1, 0) == -1)  //first byte of packet is len
+    int status;
+    unsigned char packet_len; 
+    if((status = recv(i, &packet_len, 1, 0)) == -1)  //first byte of packet is len, this is our header
     {
         //Error
         perror("recv");
         exit(1);
     }
-
-    if(recvall_stream(i,(char*) buffer, &packet_len) == -1)  //read the remaining packet
+    else if (status == 0)
+    {
+        return 0;  //Server hung up you
+    }
+    int intPacketLen = (int)packet_len; // Cast unsigned char to int
+    if(recvall_stream(i,(char*) buffer, &intPacketLen) == -1)  //read the remaining packet, username and message
     {
         //Error
         perror("recv_all");
@@ -96,20 +131,34 @@ int recv_msg(int i, void* buffer )
     return packet_len;
 
 }
-int send_msg(int j, void* buf, int len, const char* username)
+
+/**
+ * Send message from client
+ * j is socket fd
+ * *buf is msg to send
+ * len is strlen
+ * username is name of client
+ * 
+*/
+int send_msg(int j, void* buf, int len, const char* username) 
 {
-    char buffer[137];   //Len
+    char buffer[137];   //Max len packet
     //Make packet as per protocol
     //Add len to the start of packet
-    buffer[0] = len;
+    buffer[0] = len;  // Len 1 byte, load up message len
 
     //Load the username
     int i = 0;
     //Username is 8 bytes field
-    int user_len = strlen(username);
+    int packet_len = strlen(username);
+    if(packet_len > 8)
+    {
+        printf("Invalid username");
+        return -1;
+    }
     for( i = 0; i < 8; i++)
     {
-        if(i < user_len)
+        if(i <= packet_len)
         {
             buffer[i+1] = username[i];
         }
@@ -118,24 +167,51 @@ int send_msg(int j, void* buf, int len, const char* username)
             buffer[i+1] = 0x00;
         }
     }
+    buffer[0] += 8;  // load up username len which will always be  8
     //Load up the 128 bytes data field
     memcpy(&buffer[9],(char*) buf, len);
 
-    if(sendall_stream(j, buffer, &len) != 0 )
+    packet_len = buffer[0] + 1;  //load up the extra byte of len field itself
+
+    if(sendall_stream(j, buffer, &packet_len) != 0 )
     {
         perror("talker: sendall");
         exit(1);
         
     }
 
+    //print_msg(buffer,packet_len);
+
     return 0;
 }
 
 
+void print_msg(char *buf, int nbytes)
+{
+    char username[9]; // +1 for null-terminator
+    strncpy(username, buf, 8);
+    username[8] = '\0';
+
+    nbytes =  nbytes - 8;
+
+    char message[129]; // +1 for null-terminator
+    strncpy(message, buf + 8, nbytes);
+    message[nbytes] = '\0';
+
+    // Print the parsed message
+    printf("\n%s: %s\n", username, message);
+
+
+
+}
+
+
 int main(void) {
+    //Variables needed 
     fd_set master;                      // master file descriptor list
     fd_set read_fds;                    // temp file descriptor list for select()
     fd_set write_fds;
+    int fd = fileno(stdin);
     int fdmax;                          // maximum file descriptor number
     int sockfd;
     char buf[137]; // buffer for client data   (1+8 + 128 = 137)
@@ -144,12 +220,16 @@ int main(void) {
     int rv;
     struct addrinfo hints, *servinfo, *p;
     char s[INET6_ADDRSTRLEN];
+    char username[9];
+    int valid = 0;
+    /******************** Local variables End*****************/
 
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
     FD_ZERO(&read_fds);
     FD_ZERO(&write_fds);
 
+    //filling up the structs
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -189,16 +269,50 @@ int main(void) {
     printf("client: connecting to %s\n", s);
     freeaddrinfo(servinfo); // all done with this structure
 
-    printf("Connected to the server. Start typing messages:\n");
+    printf("Connected to the server.\n");
+    /**** Successfully connected to Server till this point *********/
 
+    //Get Username 
+    while (!(valid)) {
+        // Get the username
+        printf("Enter username (up to 8 characters): ");
+        fgets(message, sizeof(message), stdin);
+        if (strlen(message) <= 8) {
+            memcpy(username,message,strlen(message));
+            // Remove the newline character
+            username[strcspn(username, "\n")] = '\0';
+            valid = 1;  // Username is valid
+        } else {
+            printf("Username is too long. Please enter a username up to 8 characters.\n");
+        }
 
-    FD_SET(sockfd, &master);
-    fdmax = sockfd;
+        memset(message,0x00,sizeof(message)); 
+    }
 
+    printf("********* WELCOME TO MULTI CHAT SERVER *******************\n");
+    printf(" START TYPING : ");
+    fflush(stdout);
+
+    //Load the file descriptors into master list
+    FD_SET(sockfd, &master);  //Socket descriptor
+    FD_SET(fd, &master);      //stdin descriptor
+    if(sockfd > fd)         //Check which one is fdmax
+    {
+        fdmax = sockfd;
+    }
+    else
+    {
+        fdmax = fd;
+    }
+
+    
+    
+    /********** WHILE 1 LOOP **********************/
     while (1) {
-        read_fds = master;
-        write_fds = master;
-        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //
+        read_fds = master;  //Save a copy of master
+        write_fds = master; ////Save a copy of master
+        
+        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //we will need both read and write functions
         {
             perror("select");
             exit(4);
@@ -206,50 +320,64 @@ int main(void) {
         // run through the existing connections looking for data to read
         for (int i = 0; i <= fdmax; i++)
         {
-            if (FD_ISSET(i, &read_fds))
+            if (FD_ISSET(i, &read_fds))  //If any of the read_fds is set
             {
-                // Yu have a message
-                if ((nbytes = recv_msg(i, (void *)buf)) <= 0) // Protocol implementation
+                if (i == sockfd)  //If receive on socketfd
                 {
-                    // got error or connection closed by client
-                    if (nbytes == 0)
+                    // Yu have a message
+                    if ((nbytes = recv_msg(i, (void *)buf)) <= 0) // Protocol implementation, nbytes received here will be one which we posted in packet
                     {
-                        // connection closed
-                        printf("selectserver: socket %d hung up\n", i);
+                        // got error or connection closed by client
+                        if (nbytes == 0)
+                        {
+                            // connection closed
+                            printf("selectserver: socket %d hung up\n", i);
+                        }
+                        else
+                        {
+                            perror("recv");
+                        }
+                        close(i);           // bye!
+                        FD_CLR(i, &master); // remove from master set
                     }
                     else
                     {
-                        perror("recv");
+                        // we got some data from server
+
+                        print_msg(buf, nbytes);  // nbytes packet len which was given in protocol
+                        // printf("%s",buf);
                     }
-                    close(i);           // bye!
-                    FD_CLR(i, &master); // remove from master set
                 }
-                else
+                else if(i == fd)
                 {
-                    // we got some data from server
-                    printf("%s",buf);
-                    
+                    // Read user input
+                    // printf("You: ");
+                    fgets(message, sizeof(message), stdin);
+                    //message[strcspn(message,"\n")] = '\0';  //remove the new line
+                    send_msg_flag = true;
                 }
             }
             if (FD_ISSET(i, &write_fds))
             {
                 // Socket is ready for writing
-                // Read user input
-                //printf("You: ");
-                fgets(message, sizeof(message), stdin);
 
                 // Send the message to the server
                 // if (send(sockfd, message, strlen(message), 0) == -1) {
-                if (send_msg(sockfd, message, strlen(message), "rohirto") == -1)
+                if (send_msg_flag == true)
+                {
+                    if (send_msg(sockfd, message, strlen(message), username) == -1)  //strlen only len of message
                     {
                         perror("send");
                         close(sockfd);
                         exit(3);
                     }
-               
+
+                    //printf("Data Sent: ");
+                    
+
+                    send_msg_flag = false;
+                }
             }
-
-
         }
     }
 

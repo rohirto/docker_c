@@ -15,6 +15,7 @@
 
 #define PORT "9034" // port we're listening on
 
+void print_msg(char *buffer, int nbytes);
 
 /**
  * get sockaddr, IPv4 or IPv6:
@@ -85,52 +86,47 @@ int sendall(int s, char *buf, int *len)
 */
 int recv_msg(int i, void* buffer )
 {
-    int packet_len; 
-    if(recv(i, &
-    packet_len, 1, 0) == -1)  //first byte of packet is len
+    int status;
+    unsigned char packet_len; // 1 byte len
+    if((status = recv(i, &packet_len, 1, 0)) == -1)  //first byte of packet is len
     {
         //Error
         perror("recv");
         exit(1);
     }
-
-    if(recvall(i,(char*) buffer, &packet_len) == -1)  //read the remaining packet
+    else if(status == 0)
+    {
+        return 0;  //Connection closed by client
+    }
+    int intPacketLen = (int)packet_len; // Cast unsigned char to int
+    if(recvall(i,(char*) buffer, &intPacketLen) == -1)  //read the remaining packet
     {
         //Error
         perror("recv_all");
         exit(1);
     }
+    
+    //print_msg(buffer, intPacketLen);
 
     return packet_len;
 
 }
 
-int send_msg(int j, void* buf, int len, const char* username)
+int send_msg(int j, void* buf, int f_len)   //this buf is username and message
 {
     char buffer[137];   //Len
+    unsigned char len;
     //Make packet as per protocol
     //Add len to the start of packet
+    len = f_len;
+
     buffer[0] = len;
 
-    //Load the username
-    int i = 0;
-    //Username is 8 bytes field
-    int user_len = strlen(username);
-    for( i = 0; i < 8; i++)
-    {
-        if(i < user_len)
-        {
-            buffer[i+1] = username[i];
-        }
-        else
-        {
-            buffer[i+1] = 0x00;
-        }
-    }
-    //Load up the 128 bytes data field
-    memcpy(&buffer[9],(char*) buf, len);
+    memcpy(buffer+1,buf,len);
 
-    if(sendall(j, buffer, &len) != 0 )
+    int packetLen = len +1;
+
+    if(sendall(j,(char*) buffer, &packetLen) != 0 )
     {
         perror("talker: sendall");
         exit(1);
@@ -140,8 +136,35 @@ int send_msg(int j, void* buf, int len, const char* username)
     return 0;
 }
 
+/**
+ * Print buffer in the format of username: message
+ * 
+*/
+void print_msg(char *buffer, int nbytes)
+{
+    // Extract the length
+    //unsigned char length = buffer[0];
+
+
+        // Extract the username (8 bytes)
+        char username[9]; // +1 for null-terminator
+        strncpy(username, buffer, 8);
+        username[8] = '\0';
+
+        // Extract the message
+        char message[129]; // +1 for null-terminator
+        strncpy(message, buffer + 8, nbytes- 8);
+        message[nbytes - 8] = '\0';
+
+        // Print the parsed message
+        printf("%s (username): %s (message)\n", username, message);
+
+
+}
+
 int main(void)
 {
+    /***** LOCAL VARIABLES *******************************/
     fd_set master;                      // master file descriptor list
     fd_set read_fds;                    // temp file descriptor list for select()
     int fdmax;                          // maximum file descriptor number
@@ -155,6 +178,8 @@ int main(void)
     int yes = 1; // for setsockopt() SO_REUSEADDR, below
     int i, j, rv;
     struct addrinfo hints, *ai, *p;
+    /************* LOCAL Variables End******************************************/
+
 
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
@@ -286,8 +311,11 @@ int main(void)
                                     //     perror("send");
                                     // }
 
+                                    //print the nessage first
+                                    //print_msg(buf,nbytes);  // The buf here consists of username and bytes, need to add len field to it
+
                                     //Our Protocol will come here
-                                    if (send_msg(j, buf, nbytes,"tom") == -1)
+                                    if (send_msg(j, buf, nbytes) == -1)   
                                     {
                                         perror("send");
                                     }
