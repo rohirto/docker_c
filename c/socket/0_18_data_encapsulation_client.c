@@ -18,10 +18,9 @@ bool send_msg_flag = false;
 
 
 //Function Prototypes
-void print_msg(char *, int );
 void *get_in_addr(struct sockaddr *);
-int sendall_stream(int , char *, int *);
-int recvall_stream(int , char *, int *);
+int sendall_stream(int , unsigned char *, int *);
+int recvall_stream(int , unsigned char *, int *);
 int recv_msg(int , void*  );
 int send_msg(int , void* , int , const char* );
 
@@ -42,7 +41,7 @@ void *get_in_addr(struct sockaddr *sa)
 /**
  * To reliably send data over sock stream
 */
-int sendall_stream(int s, char *buf, int *len)
+int sendall_stream(int s, unsigned char *buf, int *len)
 {
     int total = 0;        // how many bytes we've sent
     int bytesleft = *len; // how many we have left to send
@@ -64,7 +63,7 @@ int sendall_stream(int s, char *buf, int *len)
 /**
  * To reliably receive data over sock stream
 */
-int recvall_stream(int s, char *buf, int *len)
+int recvall_stream(int s, unsigned char *buf, int *len)
 {
     int total = 0;        // how many bytes we've received
     int bytesleft = *len; // how many bytes we have left to receive
@@ -102,6 +101,7 @@ int recv_msg(int i, void* buffer )
 {
     int status;
     unsigned char packet_len; 
+    unsigned char* b = (unsigned char*)buffer;  //Typecasting void* to avoid linting warnings
     if((status = recv(i, &packet_len, 1, 0)) == -1)  //first byte of packet is len, this is our header
     {
         //Error
@@ -113,14 +113,32 @@ int recv_msg(int i, void* buffer )
         return 0;  //Server hung up you
     }
     int intPacketLen = (int)packet_len; // Cast unsigned char to int
-    if(recvall_stream(i,(char*) buffer, &intPacketLen) == -1)  //read the remaining packet, username and message
+    if(recvall_stream(i,b, &intPacketLen) == -1)  //read the remaining packet, username and message
     {
         //Error
         perror("recv_all");
         exit(1);
     }
 
-    return packet_len;
+    // Print the received message
+    unsigned char username[9]; // +1 for null-terminator
+    memcpy(username, b, 8);
+    username[8] = '\0';
+
+    
+
+    intPacketLen =  intPacketLen - 8;
+
+    char message[129]; // +1 for null-terminator
+    memcpy(message, b+8, intPacketLen);
+    message[intPacketLen] = '\0';
+
+
+    // Print the parsed message
+    printf("$$ %s: %s\n", username, message); //\n already there 
+    fflush(stdout);
+
+    return 1; //Success if reached till here
 
 }
 
@@ -134,7 +152,7 @@ int recv_msg(int i, void* buffer )
 */
 int send_msg(int j, void* buf, int len, const char* username) 
 {
-    char buffer[137];   //Max len packet
+    unsigned char buffer[137];   //Max len packet
     //Make packet as per protocol
     //Add len to the start of packet
     buffer[0] = len;  // Len 1 byte, load up message len
@@ -161,7 +179,7 @@ int send_msg(int j, void* buf, int len, const char* username)
     }
     buffer[0] += 8;  // load up username len which will always be  8
     //Load up the 128 bytes data field
-    memcpy(&buffer[9],(char*) buf, len);
+    memcpy(&buffer[9],(unsigned char*) buf, len);
 
     packet_len = buffer[0] + 1;  //load up the extra byte of len field itself
 
@@ -171,31 +189,10 @@ int send_msg(int j, void* buf, int len, const char* username)
         exit(1);
         
     }
-
     //print_msg(buffer,packet_len);
-
     return 0;
 }
 
-
-void print_msg(char *buf, int nbytes)
-{
-    char username[9]; // +1 for null-terminator
-    strncpy(username, buf, 8);
-    username[8] = '\0';
-
-    nbytes =  nbytes - 8;
-
-    char message[129]; // +1 for null-terminator
-    strncpy(message, buf + 8, nbytes);
-    message[nbytes] = '\0';
-
-    // Print the parsed message
-    printf("\n%s: %s\n", username, message);
-
-
-
-}
 
 
 int main(void) {
@@ -289,7 +286,8 @@ int main(void) {
     }
 
     printf("********* WELCOME TO MULTI CHAT SERVER *******************\n");
-    printf(" START TYPING : ");
+    printf(" START TYPING : \n");
+    printf("> ");
     fflush(stdout);
 
     //Load the file descriptors into master list
@@ -342,20 +340,42 @@ int main(void) {
                     }
                     else
                     {
-                        // we got some data from server
-
-                        print_msg(buf, nbytes);  // nbytes packet len which was given in protocol
-                        // printf("%s",buf);
+                        //Done 
+                        printf("> ");
+                        fflush(stdout);
                     }
                 }
                 else if(i == fd)
                 {
                     // Read user input
                     // printf("You: ");
+                    // unsigned char c;
+                    // int j = 0;
+                    // do
+                    // {
+                    //     c = getchar();
+                    //     // Read and discard characters until a newline or EOF is encountered
+                    //     if(j < 128)
+                    //     {
+                    //         message[j++] = c;
+                    //     }
+                    //     else
+                    //     {
+                    //         printf("Limit exceeded!\n");
+                    //         printf("> ");
+                    //         break;
+                    //     }
+                    // } while (c != '\n' && c != EOF);
+                                
                     fgets(message, sizeof(message), stdin);
-                    //message[strcspn(message,"\n")] = '\0';  //remove the new line
-                    send_msg_flag = true;
+                    message[strcspn(message,"\n")] = '\0';  //remove the new line
+                    if(strlen(message) < 128)
+                    {
+                        send_msg_flag = true;
+                    }
+                    
                 }
+
             }
             if (FD_ISSET(i, &write_fds))
             {
@@ -370,6 +390,13 @@ int main(void) {
                         perror("send");
                         close(sockfd);
                         exit(3);
+                    }
+                    else
+                    {
+                        //After ptinting the message give user prompt
+                        printf("> ");
+                        fflush(stdout);
+
                     }
 
                     //printf("Data Sent: ");
