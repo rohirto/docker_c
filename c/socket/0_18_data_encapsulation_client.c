@@ -13,6 +13,10 @@
 #define SERVER_PORT "9034"    // Replace with the server's port
 
 
+//Global Variables
+bool send_msg_flag = false;
+
+
 //Function Prototypes
 void print_msg(char *, int );
 void *get_in_addr(struct sockaddr *);
@@ -21,18 +25,6 @@ int recvall_stream(int , char *, int *);
 int recv_msg(int , void*  );
 int send_msg(int , void* , int , const char* );
 
-//Structs
-struct packet
-{
-    unsigned char len;          //1 byte
-    unsigned char username[8];  // 8 Byte
-    unsigned char message[128]; //128 Bytes
-
-
-};
-
-//Global Variables
-bool send_msg_flag = false;
 
 /**
  * get sockaddr, IPv4 or IPv6:
@@ -273,16 +265,23 @@ int main(void) {
     /**** Successfully connected to Server till this point *********/
 
     //Get Username 
-    while (!(valid)) {
+    while (!(valid)) 
+    {
+        //memset the username
+        memset(username,0x00, sizeof(username));
         // Get the username
         printf("Enter username (up to 8 characters): ");
         fgets(message, sizeof(message), stdin);
-        if (strlen(message) <= 8) {
+
+        if (strlen(message) <= 8) 
+        {
             memcpy(username,message,strlen(message));
             // Remove the newline character
             username[strcspn(username, "\n")] = '\0';
             valid = 1;  // Username is valid
-        } else {
+        } 
+        else 
+        {
             printf("Username is too long. Please enter a username up to 8 characters.\n");
         }
 
@@ -308,7 +307,8 @@ int main(void) {
     
     
     /********** WHILE 1 LOOP **********************/
-    while (1) {
+    while (1) 
+    {
         read_fds = master;  //Save a copy of master
         write_fds = master; ////Save a copy of master
         
