@@ -19,6 +19,10 @@
 
 #define FILE_LIST_PACKET    0x01
 #define FILE_LIST_ACK       0x02
+#define FILE_PACKET         0x03
+#define FILE_ACK            0x04
+
+
 
 
 struct FileInfo
@@ -27,6 +31,72 @@ struct FileInfo
     off_t size;
     time_t creation_time;
 };
+
+
+volatile bool send_file_req_flag = false;
+struct FileInfo file_list[1024];
+unsigned int  file_count = 0;
+unsigned int file_no = 0;
+
+
+void print_files(int file_count, struct FileInfo* file_list) 
+{
+    printf("List of files in the directory:\n");
+    for (int i = 0; i < file_count; i++) 
+    {
+        printf("Name: %s, Size: %ld bytes, Creation Time: %s", file_list[i].name, file_list[i].size, ctime(&file_list[i].creation_time));
+    }
+    printf("Total files: %d\n", file_count);
+}
+
+int receiveFileOverSocket(int socket, const char* filePath) 
+{
+    FILE* file = fopen(filePath, "wb");
+    if (file == NULL) {
+        perror("Error opening file for writing");
+        return -1;
+    }
+
+    printf("\nRecieve in progress.. ");
+    fflush(stdout);
+    char buffer[1024];
+    unsigned char bytesRead = -1;
+
+    // while ((bytesRead = recv(socket, buffer, sizeof(buffer), 0)) > 0) 
+    // {
+    //     fprintf(stderr,"...");
+    //     if (fwrite(buffer, 1, bytesRead, file) < bytesRead) 
+    //     {
+    //         perror("Error writing to file");
+    //         fclose(file);
+    //         return -1;
+    //     }
+    // }
+
+    while(1)
+    {
+        int n = recv(socket, buffer, 1024, 0);
+        bytesRead +=n;
+        fprintf(file, "%s", buffer);
+        if(n<=0)
+        {
+            break;
+        }
+        
+        bzero(buffer, 1024);
+    }
+
+    // if (bytesRead < 0) {
+    //     perror("Error receiving file");
+    //     fclose(file);
+    //     return -1;
+    // }
+    
+    fclose(file);
+    printf("\n File recieved Successfully!");
+    fflush(stdout);
+    return 0;
+}
 
 /**
  * get sockaddr, IPv4 or IPv6:
@@ -39,6 +109,28 @@ void *get_in_addr(struct sockaddr *sa)
         return &(((struct sockaddr_in *)sa)->sin_addr);
     }
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
+/**
+ * To reliably send data over sock stream
+*/
+int sendall(int s, unsigned char *buf, int *len)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = *len; // how many we have left to send
+    int n =0;
+    while (total < *len)
+    {
+        n = send(s, buf + total, bytesleft, 0);  
+        if (n == -1)
+        {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    *len = total;            // return number actually sent here
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
 /**
@@ -75,7 +167,8 @@ int recieve_packet(int s)
     unsigned char len;
     int status;
     unsigned char packet_type;
-    static int file_no = 0;
+    static int file_n = 0;
+    
 
     if((status = recv(s,&packet_type,1,0)) == -1)  //first byte of packet is packet type, this is our header
     {
@@ -111,10 +204,23 @@ int recieve_packet(int s)
         //Print buffer
         struct FileInfo fileInfo;
         unpack(buffer,"256sll",fileInfo.name,&fileInfo.size,&fileInfo.creation_time);
-        printf("%d.Name: %s Size: %ld bytes, Creation Time: %s\n", file_no++,fileInfo.name,fileInfo.size,ctime(&fileInfo.creation_time));
-        fflush(stdout);
+        // printf("%d.Name: %s Size: %ld bytes, Creation Time: %s\n", file_no,fileInfo.name,fileInfo.size,ctime(&fileInfo.creation_time));
+        // fflush(stdout);
+        //Add to the file_list data structure
+        file_list[file_n++] = fileInfo;
+        
 
         return FILE_LIST_ACK;
+        break;
+    case FILE_PACKET:
+        //Start receiving a file
+        if(receiveFileOverSocket(s,file_list[file_no].name) !=0)
+        {
+            //errorr
+            perror("File Receive");
+            return -1;
+        }
+        return FILE_ACK;
         break;
 
     default:
@@ -131,6 +237,7 @@ int client_handle()
 {
     fd_set master;                      // master file descriptor list
     fd_set read_fds;                    // temp file descriptor list for select()
+    fd_set write_fds;
     int fdmax;                          // maximum file descriptor number
     int fd = fileno(stdin);
     int sockfd;
@@ -138,12 +245,16 @@ int client_handle()
     struct addrinfo hints, *servinfo, *p;
     char s[INET6_ADDRSTRLEN];
     int nbytes;
-
-    int file_count;
+    unsigned char buff[20];
+    
+   
+    bool valid = false;
+    static unsigned int a = 0;
 
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
     FD_ZERO(&read_fds);
+    FD_ZERO(&write_fds);
 
     //filling up the structs
     memset(&hints, 0, sizeof hints);
@@ -190,13 +301,25 @@ int client_handle()
 
     //Load the file descriptors into master list
     FD_SET(sockfd, &master);  //Socket descriptor
-    fdmax = sockfd;
+    FD_SET(fd, &master);      //stdin descriptor
+    if(sockfd > fd)         //Check which one is fdmax
+    {
+        fdmax = sockfd;
+    }
+    else
+    {
+        fdmax = fd;
+    }
 
+    //User Interaction
+    printf("****** File Transfer Client ************************************\n");
+    printf("AFTER 5 sec press Enter to get file_list\n");
      /********** WHILE 1 LOOP **********************/
     while (1) 
     {
         read_fds = master;  //Save a copy of master
-        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)   //we will need both read and write functions
+        write_fds = master; ////Save a copy of master
+        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //we will need both read and write functions
         {
             perror("select");
             exit(4);
@@ -231,6 +354,10 @@ int client_handle()
                         {
                         case FILE_LIST_ACK:
                             file_count++;
+                            
+                            break;
+                        case FILE_ACK:
+                        printf("\nfile received!\n");
                             break;
                         
                         default:
@@ -238,6 +365,87 @@ int client_handle()
                         }
                     }
                 }
+                else if(i == fd)  //stdin, every time if something is available on stdin
+                {
+                    switch (a)
+                    {
+                    case 0:
+                        // Get the File list by just pressing enter
+                        fgets(buff, sizeof(buff), stdin);
+                        buff[strcspn(buff, "\n")] = '\0'; // remove the new line
+                        print_files(file_count, file_list);
+                        if (file_count > 0)
+                        {
+                            // Now you can send to server the request file no
+                        }
+                        else
+                        {
+                            perror("File count");
+                            fprintf(stderr, "File list still not got");
+                        }
+                        printf("\n\n Enter File number to get: ");
+                        fflush(stdout);
+                        a = 1;
+                        break;
+                    case 1:
+                        // Get File name
+                        while (!(valid))
+                        {
+                           
+                            // memset the File no
+                            memset(buff, 0x00, sizeof(buff));
+
+                            fgets(buff, sizeof(buff), stdin);
+
+                            if ((file_no = atoi(buff)) != 0)
+                            {
+                                if(file_no < file_count)
+                                {
+                                    // Correct value
+                                    valid = true;
+                                }
+                            }
+                            else
+                            {
+                                printf("Enter Correct Vaule!");
+                                fflush(stdout);
+                            }
+                        }
+
+                        //valid = false;
+                        send_file_req_flag = true;
+
+                        a = 2;
+                        break;
+                    case 2:
+                        // You sent the file no to server
+                        printf("\nWait! processing your request\n");
+                        a = 3;
+                        break;
+
+                    default:
+                        break;
+                    }
+                }
+            }
+            if (FD_ISSET(i, &write_fds))
+            {
+                 // Socket is ready for writing
+                 if(send_file_req_flag == true)
+                 {
+                    unsigned char tmp[3];
+                    int t_len = 2;
+                    packi16(tmp,file_no);
+                    if(sendall(sockfd,tmp,&t_len) == -1)
+                    {
+                        perror("sendall");
+                    }
+                    printf("\nSending request for File no: %u Name: %s", file_no,file_list[file_no].name);
+                    fflush(stdout);
+                    valid = false;
+                    send_file_req_flag = false;
+
+                 }
             }
         }
     }

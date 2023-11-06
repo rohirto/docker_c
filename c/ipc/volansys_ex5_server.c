@@ -33,11 +33,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <fcntl.h>
 
 
 #define PORT "9034" // port we're listening on
 const char* dir_path = "../ipc/";
 volatile bool error_flag = false;
+volatile bool file_list_resp = false;  //Expect response from client on file list
+volatile int send_file_flag = -1;
 
 struct FileInfo 
 {
@@ -92,6 +95,25 @@ int sendall(int s, unsigned char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
+int recvall(int s, char *buf, int *len)
+{
+    int total = 0;        // how many bytes we've received
+    int bytesleft = *len; // how many bytes we have left to receive
+    int n = 0;
+    while (total < *len)
+    {
+        n = recv(s, buf + total, bytesleft, 0);
+        if (n == -1  || n == 0)
+        {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    *len = total;            // return the number actually received here
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
 
 int send_file_list(int s,struct FileInfo* file_list, int file_count)
 {
@@ -113,15 +135,59 @@ int send_file_list(int s,struct FileInfo* file_list, int file_count)
         }
     }
     printf("Total files converted: %d\n", file_count);
+    fflush(stdout);
 
     return 1;
 }
+
+int sendFileOverSocket(int socket, const char* filePath) 
+{
+    FILE* file = fopen(filePath, "rb");
+    if (file == NULL) 
+    {
+        perror("File not found");
+        return -1;
+    }
+    unsigned char c = 0x03;
+    if (send(socket, &c, sizeof(c),0) == -1)
+    {
+        perror("send");
+        fclose(file);
+        return -1;
+    }
+    char buffer[1024];
+    size_t bytesRead;
+
+//    while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) 
+//    {
+//         if (send(socket, buffer, bytesRead, 0) == -1) {
+//             perror("Error sending file");
+//             fclose(file);
+//             return -1;
+//         }
+//    }
+    while (fgets(buffer, 1024, file) != NULL)
+    {
+        if (send(socket, buffer, sizeof(buffer), 0) == -1)
+        {
+            perror("[-] Error in sendung data");
+            exit(1);
+        }
+        bzero(buffer, 1024);
+    }
+    printf("\nFile Sent Successfully!\n");
+    fclose(file);
+    send_file_flag = -1;
+    return 0;
+}
+
 
 int server_handle(struct FileInfo* fileInfo, int file_count)
 {
     /***** LOCAL VARIABLES *******************************/
     fd_set master;                      // master file descriptor list
     fd_set read_fds;                    // temp file descriptor list for select()
+    fd_set write_fds;
     int fdmax;                          // maximum file descriptor number
     int listener;                       // listening socket descriptor
     int newfd;                          // newly accept()ed socket descriptor
@@ -138,6 +204,7 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
     FD_ZERO(&read_fds);
+    FD_ZERO(&write_fds);
 
     // get us a socket and bind it
     memset(&hints, 0, sizeof hints);
@@ -198,7 +265,8 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     for (;;)
     {
         read_fds = master; // copy it, need to keep a safe copy of master fds
-        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)   //we are only interested in readfds
+        write_fds = master; ////Save a copy of master
+        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //we are only interested in readfds
         {
             perror("select");
             //exit(4);
@@ -242,34 +310,77 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                         {
                             perror("send file list");
                         }
+
+                        file_list_resp = true;
                     }
                 }
                 else
                 {
                     // handle data from a client
-                    //if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0)
-                    // if ((nbytes = recv_msg(i, (void*) buf)) <= 0)   //Protocol implementation
-                    // {
-                    //     // got error or connection closed by client
-                    //     if (nbytes == 0)
-                    //     {
-                    //         // connection closed
-                    //         printf("selectserver: socket %d hung up\n", i);
-                    //     }
-                    //     else
-                    //     {
-                    //         perror("recv");
-                    //     }
-                    //     close(i);           // bye!
-                    //     FD_CLR(i, &master); // remove from master set
-                    // }
-                    // else
-                    // {
-                    //     // we got some data from a client
+                    if(file_list_resp == true)
+                    {
+                        unsigned char tmp[3];
+                        int t_len = 2;
+                        if(recvall(i,tmp,&t_len) == -1)
+                        {
+                            perror("recvall");
+                            error_flag = true;
+                            close(i);           // bye!
+                            FD_CLR(i, &master); // remove from master set
+                            fprintf(stderr,"selectserver: socket %d hung up\n", i);
+                            
+                        }
+                        int file_no = unpacki16(tmp);
+
+                        file_list_resp = false;
+
+                        send_file_flag = file_no;
+
+                        printf("\n Received Req for File no:%d\n", file_no);
+                        fflush(stdout);
                         
-                    // }
+                    }
                 } // END handle data from client
             }     // END got new incoming connection
+            if (FD_ISSET(i, &write_fds))
+            {
+                //Socket ready for writing
+                if(send_file_flag > -1)
+                {
+                    char path[256];
+                    sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
+                    printf("Sending File: %s\n", path);
+                    fflush(stdout);
+                    if (sendFileOverSocket(i, path) == -1)
+                    {
+                        perror("file send");
+                        fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
+                    }
+                    // //Send the requested file
+                    // int pid = fork();
+                    // if (pid == 0) 
+                    // {
+                    //     char path[256];
+                    //     sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
+                    //     if(sendFileOverSocket(i,path) == -1)
+                    //     {
+                    //         perror("file send");
+                    //         fprintf(stderr, "File Send Failed for file no: %d",send_file_flag);
+                    //     }
+                        
+                    // }
+                    // else if(pid > 0)
+                    // {
+                    //     //Parent process
+                        
+                    // }
+                    // else if(pid < 0)
+                    // {
+                    //     perror("fork");
+                    //     fprintf(stderr,"Fork failed");
+                    // }
+                }
+            }
         }         // END looping through file descriptors
     }          
 
