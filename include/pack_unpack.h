@@ -10,4 +10,7 @@
 #define unpack754_32(i) (unpack754((i), 32, 8))
 #define unpack754_64(i) (unpack754((i), 64, 11))
 
+void unpack(unsigned char *buf, char *format, ...);
+unsigned int pack(unsigned char *buf, char *format, ...);
+
 #endif

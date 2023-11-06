@@ -26,8 +26,18 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
 
+
+#define PORT "9034" // port we're listening on
 const char* dir_path = "../ipc/";
+volatile bool error_flag = false;
 
 struct FileInfo 
 {
@@ -35,6 +45,235 @@ struct FileInfo
     off_t size;
     time_t creation_time;
 };
+
+/** 
+ * @brief Error Handling
+*/
+void cleanup(struct FileInfo* file_list, int file_count) 
+{
+    for (int i = 0; i < file_count; i++) {
+        // Free any resources within the FileInfo structure, if needed
+    }
+    free(file_list);
+}
+
+
+/* 2. As soon as server can accept client connections it should on demand present the file list to client.*/
+
+/**
+ * get sockaddr, IPv4 or IPv6:
+ * */ 
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET)
+    {
+        return &(((struct sockaddr_in *)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
+int sendall(int s, unsigned char *buf, int *len)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = *len; // how many we have left to send
+    int n =0;
+    while (total < *len)
+    {
+        n = send(s, buf + total, bytesleft, 0);      //Can use send or sendto
+                        
+        if (n == -1)
+        {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    *len = total;            // return number actually sent here
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
+
+int send_file_list(int s,struct FileInfo* file_list, int file_count)
+{
+    unsigned char bin_data[1024];
+    unsigned int len_to_send = 0;
+    printf("Converting File List into binary:\n");
+    for (int i = 0; i < file_count; i++) 
+    {
+        memset(bin_data, 0x00, 1024);
+        printf("Name: %s, Size: %ld bytes, Creation Time: %s\n", file_list[i].name, file_list[i].size, ctime(&file_list[i].creation_time));
+        //pack the data: 
+        len_to_send = pack(bin_data+2,"sll",file_list[i].name,file_list[i].size, file_list[i].creation_time);
+        bin_data[0] = 0x01;         //To signify file list packet
+        bin_data[1] = (unsigned char) len_to_send;  //To signify len of file list packet excluding starting 2 bytes
+        len_to_send = len_to_send + 2;
+        if(sendall(s,bin_data,&len_to_send) == -1)
+        {
+            return -1;
+        }
+    }
+    printf("Total files converted: %d\n", file_count);
+
+    return 1;
+}
+
+int server_handle(struct FileInfo* fileInfo, int file_count)
+{
+    /***** LOCAL VARIABLES *******************************/
+    fd_set master;                      // master file descriptor list
+    fd_set read_fds;                    // temp file descriptor list for select()
+    int fdmax;                          // maximum file descriptor number
+    int listener;                       // listening socket descriptor
+    int newfd;                          // newly accept()ed socket descriptor
+    struct sockaddr_storage remoteaddr; // client address
+    socklen_t addrlen;
+    char remoteIP[INET6_ADDRSTRLEN];
+    int yes = 1; // for setsockopt() SO_REUSEADDR, below
+    int i, rv;
+    struct addrinfo hints, *ai, *p;
+    unsigned char buf[1024];
+    int nbytes;
+    /********************************************************/
+
+    //Macros for select()
+    FD_ZERO(&master); // clear the master and temp sets
+    FD_ZERO(&read_fds);
+
+    // get us a socket and bind it
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0)   //fill up the structs
+    {
+        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+        //exit(1);
+        //error_flag = true;
+        return -1;
+    }
+    for (p = ai; p != NULL; p = p->ai_next)
+    {
+        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);  //Create the socket descriptor
+        if (listener < 0)
+        {
+            continue;
+        }
+        // lose the pesky "address already in use" error message
+        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0)
+        {
+            close(listener);
+            continue;
+        }
+        break;
+    }
+    // if we got here, it means we didn't get bound
+    if (p == NULL)
+    {
+        fprintf(stderr, "selectserver: failed to bind\n");
+        //exit(2);
+        //error_flag = true;
+        return -1;
+    }
+
+    freeaddrinfo(ai); // all done with this
+
+    // listen
+    if (listen(listener, 10) == -1)
+    {
+        perror("listen");
+        //exit(3);
+        //error_flag = true;
+        return -1;
+    }
+
+    // add the listener to the master set
+    FD_SET(listener, &master);
+
+    // keep track of the biggest file descriptor
+    fdmax = listener; // so far, it's this one
+    // main loop
+    for (;;)
+    {
+        read_fds = master; // copy it, need to keep a safe copy of master fds
+        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1)   //we are only interested in readfds
+        {
+            perror("select");
+            //exit(4);
+            //error_flag = true;
+            return -1;
+        }
+        // run through the existing connections looking for data to read
+        for (i = 0; i <= fdmax; i++)
+        {
+            if (FD_ISSET(i, &read_fds))
+            { 
+                // we got one!!
+                if (i == listener)  //Listener is waiting for new connections, and got a new one
+                {
+                    // handle new connections
+                    addrlen = sizeof remoteaddr;
+                    newfd = accept(listener,
+                                   (struct sockaddr *)&remoteaddr,
+                                   &addrlen);
+                    if (newfd == -1)
+                    {
+                        perror("accept");
+                    }
+                    else
+                    {
+                        FD_SET(newfd, &master); // add to master set
+                        if (newfd > fdmax)
+                        { // keep track of the max
+                            fdmax = newfd;
+                        }
+                        printf("selectserver: new connection from %s on "
+                               "socket %d\n",
+                               inet_ntop(remoteaddr.ss_family,
+                                         get_in_addr((struct sockaddr *)&remoteaddr),
+                                         remoteIP, INET6_ADDRSTRLEN),
+                               newfd);
+                        
+
+                        //Send the File list to client
+                        if(send_file_list(newfd,fileInfo,file_count) == -1)
+                        {
+                            perror("send file list");
+                        }
+                    }
+                }
+                else
+                {
+                    // handle data from a client
+                    //if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0)
+                    // if ((nbytes = recv_msg(i, (void*) buf)) <= 0)   //Protocol implementation
+                    // {
+                    //     // got error or connection closed by client
+                    //     if (nbytes == 0)
+                    //     {
+                    //         // connection closed
+                    //         printf("selectserver: socket %d hung up\n", i);
+                    //     }
+                    //     else
+                    //     {
+                    //         perror("recv");
+                    //     }
+                    //     close(i);           // bye!
+                    //     FD_CLR(i, &master); // remove from master set
+                    // }
+                    // else
+                    // {
+                    //     // we got some data from a client
+                        
+                    // }
+                } // END handle data from client
+            }     // END got new incoming connection
+        }         // END looping through file descriptors
+    }          
+
+}
 
 void print_files(int file_count, struct FileInfo* file_list) 
 {
@@ -109,6 +348,13 @@ int main()
 
     // See if the file list is created or not
     print_files(file_count, file_list);
+
+    //Start the server
+    if(server_handle(file_list,file_count) == -1)
+    {
+        cleanup(file_list,file_count);
+    }
+    //Convert 
 
     free(file_list);
 

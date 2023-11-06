@@ -9,7 +9,8 @@ LIBRARY := libmylib.a
 
 # Compiler and compilation flags
 CC := gcc
-CFLAGS := -Wall
+# Compiler flags
+CFLAGS = -Wall -fPIC -I../include
 
 # Default target: build the library
 all: $(LIBRARY)
