@@ -39,7 +39,6 @@
 #define PORT "9034" // port we're listening on
 const char* dir_path = "../ipc/";
 volatile bool error_flag = false;
-volatile bool file_list_resp = false;  //Expect response from client on file list
 volatile int send_file_flag = -1;
 
 struct FileInfo 
@@ -64,8 +63,8 @@ void cleanup(struct FileInfo* file_list, int file_count)
 /* 2. As soon as server can accept client connections it should on demand present the file list to client.*/
 
 /**
- * get sockaddr, IPv4 or IPv6:
- * */ 
+ * @brief get sockaddr, IPv4 or IPv6:
+ **/ 
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET)
@@ -75,6 +74,15 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+/**
+ * @brief send all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be sent
+ * @param int* len - len to be sent, also how many bytes were actually sent is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+*/
 int sendall(int s, unsigned char *buf, int *len)
 {
     int total = 0;        // how many bytes we've sent
@@ -95,6 +103,15 @@ int sendall(int s, unsigned char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
+/**
+ * @brief receive all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be rx
+ * @param int* len - len to be rx, also how many bytes were actually rx is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+*/
 int recvall(int s, char *buf, int *len)
 {
     int total = 0;        // how many bytes we've received
@@ -103,7 +120,7 @@ int recvall(int s, char *buf, int *len)
     while (total < *len)
     {
         n = recv(s, buf + total, bytesleft, 0);
-        if (n == -1  || n == 0)
+        if (n == -1)
         {
             break;
         }
@@ -114,7 +131,15 @@ int recvall(int s, char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
-
+/**
+ * @brief Send File List to the client
+ * @param int s - socket descriptor
+ * @param struct FileInfo* file_list - starting pointer to the data structure that holds the file dir info
+ * @param int file count - No of elements in the directory
+ * @returns -1 on failure or 1 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+*/
 int send_file_list(int s,struct FileInfo* file_list, int file_count)
 {
     unsigned char bin_data[1024];
@@ -136,44 +161,51 @@ int send_file_list(int s,struct FileInfo* file_list, int file_count)
     }
     printf("Total files converted: %d\n", file_count);
     fflush(stdout);
+    printf("Sending Ending packet\n");
+    unsigned char c = 0xBF; // End packet
+    if (send(s, &c, 1, 0) == -1)
+    {
+        return -1;
+    }
 
     return 1;
 }
 
 int sendFileOverSocket(int socket, const char* filePath) 
 {
+    struct stat s;
+    if (stat(filePath, &s) == -1)
+    {
+        printf("Can't get file info"); 
+        return;
+    }
     FILE* file = fopen(filePath, "rb");
     if (file == NULL) 
     {
         perror("File not found");
         return -1;
     }
-    unsigned char c = 0x03;
-    if (send(socket, &c, sizeof(c),0) == -1)
-    {
-        perror("send");
-        fclose(file);
-        return -1;
-    }
-    char buffer[1024];
+    char buf[1024];
     size_t bytesRead;
 
-//    while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) 
-//    {
-//         if (send(socket, buffer, bytesRead, 0) == -1) {
-//             perror("Error sending file");
-//             fclose(file);
-//             return -1;
-//         }
-//    }
-    while (fgets(buffer, 1024, file) != NULL)
+    long size = s.st_size;
+    long tmp_size = htonl(size);
+    int len_to_tx = sizeof(tmp_size);
+    if (sendall(socket, &tmp_size, &len_to_tx) == 0)  //Need to see how to send data over non blocking sockets
     {
-        if (send(socket, buffer, sizeof(buffer), 0) == -1)
-        {
-            perror("[-] Error in sendung data");
-            exit(1);
+        while (size > 0)
+        { 
+            int rval = fread(buf, 1, min(sizeof(buf), size), file); 
+            if (rval < 1)
+            {
+                printf("Can't read from file");
+                break;
+            }
+            len_to_tx = rval;
+            if (sendall(socket, buf, &len_to_tx) == -1)
+                break;
+            size -= rval;
         }
-        bzero(buffer, 1024);
     }
     printf("\nFile Sent Successfully!\n");
     fclose(file);
@@ -181,7 +213,12 @@ int sendFileOverSocket(int socket, const char* filePath)
     return 0;
 }
 
-
+/**
+ * @brief Main Server Handler
+ * @param struct FileInfo* file_list - starting pointer to the data structure that holds the file dir info
+ * @param int file count - No of elements in the directory
+ * @returns -1 on failure 
+*/
 int server_handle(struct FileInfo* fileInfo, int file_count)
 {
     /***** LOCAL VARIABLES *******************************/
@@ -199,6 +236,8 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     struct addrinfo hints, *ai, *p;
     unsigned char buf[1024];
     int nbytes;
+
+    static unsigned int state = 0;  //State of the server
     /********************************************************/
 
     //Macros for select()
@@ -304,21 +343,22 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                                          remoteIP, INET6_ADDRSTRLEN),
                                newfd);
                         
-
+                        //Writes to socket to be handled by writefds
+                        state = 1; //Now we can send file list to client
                         //Send the File list to client
-                        if(send_file_list(newfd,fileInfo,file_count) == -1)
-                        {
-                            perror("send file list");
-                        }
+                        // if(send_file_list(newfd,fileInfo,file_count) == -1)
+                        // {
+                        //     perror("send file list");
+                        // }
 
-                        file_list_resp = true;
+                        //file_list_resp = true;
                     }
                 }
                 else
                 {
-                    // handle data from a client
-                    if(file_list_resp == true)
+                    switch (state)
                     {
+                    case 2:   //Expect a file no from user
                         unsigned char tmp[3];
                         int t_len = 2;
                         if(recvall(i,tmp,&t_len) == -1)
@@ -332,60 +372,106 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                         }
                         int file_no = unpacki16(tmp);
 
-                        file_list_resp = false;
+                         
 
                         send_file_flag = file_no;
 
                         printf("\n Received Req for File no:%d\n", file_no);
                         fflush(stdout);
-                        
+
+                        state = 3;  //Go to next state, write the file to socket
+                        break;
+
+                    case 4: //Do the clean up
+                            printf("\n File Cycle over, starting again\n");
+                            state = 2;
+                        break;
+                    
+                    default:
+                        break;
                     }
                 } // END handle data from client
             }     // END got new incoming connection
             if (FD_ISSET(i, &write_fds))
             {
-                //Socket ready for writing
-                if(send_file_flag > -1)
+                if (i == newfd)
                 {
-                    char path[256];
-                    sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
-                    printf("Sending File: %s\n", path);
-                    fflush(stdout);
-                    if (sendFileOverSocket(i, path) == -1)
+                    switch (state)
                     {
-                        perror("file send");
-                        fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
+                    case 1: //ready to send the file list to client
+                        if(send_file_list(i,fileInfo,file_count) == -1)
+                        {
+                            perror("send file list");
+                        }
+                        state = 2; //Next state, expect a file no from client
+                        break;
+                    case 3: //Send the file over socket
+                        if (send_file_flag > -1)
+                        {
+                            char path[256];
+                            sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
+                            printf("Sending File: %s\n", path);
+                            fflush(stdout);
+                            if (sendFileOverSocket(i, path) == -1)
+                            {
+                                perror("file send");
+                                fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
+                            }
+                        }
+                        state = 4;  //Goto next state, clean up and start over again
+                        break;
+
+                    default:
+                        break;
                     }
-                    // //Send the requested file
-                    // int pid = fork();
-                    // if (pid == 0) 
+                    // Socket ready for writing
+                    // if (send_file_flag > -1)
                     // {
                     //     char path[256];
                     //     sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
-                    //     if(sendFileOverSocket(i,path) == -1)
+                    //     printf("Sending File: %s\n", path);
+                    //     fflush(stdout);
+                    //     if (sendFileOverSocket(i, path) == -1)
                     //     {
                     //         perror("file send");
-                    //         fprintf(stderr, "File Send Failed for file no: %d",send_file_flag);
+                    //         fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
                     //     }
-                        
-                    // }
-                    // else if(pid > 0)
-                    // {
-                    //     //Parent process
-                        
-                    // }
-                    // else if(pid < 0)
-                    // {
-                    //     perror("fork");
-                    //     fprintf(stderr,"Fork failed");
-                    // }
+                        // //Send the requested file
+                        // int pid = fork();
+                        // if (pid == 0)
+                        // {
+                        //     char path[256];
+                        //     sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
+                        //     if(sendFileOverSocket(i,path) == -1)
+                        //     {
+                        //         perror("file send");
+                        //         fprintf(stderr, "File Send Failed for file no: %d",send_file_flag);
+                        //     }
+
+                        // }
+                        // else if(pid > 0)
+                        // {
+                        //     //Parent process
+
+                        // }
+                        // else if(pid < 0)
+                        // {
+                        //     perror("fork");
+                        //     fprintf(stderr,"Fork failed");
+                        // }
+                    //}
                 }
             }
         }         // END looping through file descriptors
     }          
 
 }
-
+/**
+ * @brief Print the files in the directory
+ * @param int file_count, no of file in directory
+ * @param struct FileInfo* file_list Pointer to struct holding File info
+ * 
+*/
 void print_files(int file_count, struct FileInfo* file_list) 
 {
     printf("List of files in the directory:\n");

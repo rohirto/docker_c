@@ -33,12 +33,16 @@ struct FileInfo
 };
 
 
-volatile bool send_file_req_flag = false;
 struct FileInfo file_list[1024];
 unsigned int  file_count = 0;
 unsigned int file_no = 0;
 
-
+/**
+ * @brief Print the files in the directory
+ * @param int file_count, no of file in directory
+ * @param struct FileInfo* file_list Pointer to struct holding File info
+ * 
+*/
 void print_files(int file_count, struct FileInfo* file_list) 
 {
     printf("List of files in the directory:\n");
@@ -49,8 +53,26 @@ void print_files(int file_count, struct FileInfo* file_list)
     printf("Total files: %d\n", file_count);
 }
 
+int write_all(FILE *file, const void *buf, int len)
+{
+    const char *pbuf = (const char *) buf;
+    while (len > 0)
+    {
+        int written = fwrite(pbuf, 1, len, file);
+        if (written < 1)
+        {
+            printf("Can't write to file");
+            return -1;
+        }
+        pbuf += written;
+        len -= written;
+    }
+    return 0;
+}
+
 int receiveFileOverSocket(int socket, const char* filePath) 
 {
+    int rval;
     FILE* file = fopen(filePath, "wb");
     if (file == NULL) {
         perror("Error opening file for writing");
@@ -59,38 +81,41 @@ int receiveFileOverSocket(int socket, const char* filePath)
 
     printf("\nRecieve in progress.. ");
     fflush(stdout);
-    char buffer[1024];
+    char buf[1024];
     unsigned char bytesRead = -1;
-
-    // while ((bytesRead = recv(socket, buffer, sizeof(buffer), 0)) > 0) 
-    // {
-    //     fprintf(stderr,"...");
-    //     if (fwrite(buffer, 1, bytesRead, file) < bytesRead) 
-    //     {
-    //         perror("Error writing to file");
-    //         fclose(file);
-    //         return -1;
-    //     }
-    // }
-
-    while(1)
+    long size = 0;
+    int len_to_rx = sizeof(size);
+    if (recvall(socket, &size, &len_to_rx) == 0)
     {
-        int n = recv(socket, buffer, 1024, 0);
-        bytesRead +=n;
-        fprintf(file, "%s", buffer);
-        if(n<=0)
-        {
-            break;
-        }
+        size = ntohl(size);
         
-        bzero(buffer, 1024);
-    }
+        while (size > 0)
+        {
+            len_to_rx = min(sizeof(buf), size);
+            if (recvall(socket, buf, &len_to_rx) == 0)
+            {
+                rval = len_to_rx;
+                if (rval == 0)
+                    break;
+                if (write_all(file, buf, rval) == -1)
+                    break;
+                size = size - rval;
+            }
+            else
+            {
+                perror("recvall");
+                fclose(file);
+                return -1;
+            }
 
-    // if (bytesRead < 0) {
-    //     perror("Error receiving file");
-    //     fclose(file);
-    //     return -1;
-    // }
+        } 
+    }
+    else
+    {
+        perror("recvall");
+        fclose(file);
+        return -1;
+    }
     
     fclose(file);
     printf("\n File recieved Successfully!");
@@ -99,9 +124,8 @@ int receiveFileOverSocket(int socket, const char* filePath)
 }
 
 /**
- * get sockaddr, IPv4 or IPv6:
- * Used to fill up the structs needed to get sockets going
- * */ 
+ * @brief get sockaddr, IPv4 or IPv6:
+ **/ 
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET)
@@ -112,7 +136,13 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 /**
- * To reliably send data over sock stream
+ * @brief send all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be sent
+ * @param int* len - len to be sent, also how many bytes were actually sent is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
 */
 int sendall(int s, unsigned char *buf, int *len)
 {
@@ -134,7 +164,13 @@ int sendall(int s, unsigned char *buf, int *len)
 }
 
 /**
- * To reliably receive data over sock stream
+ * @brief receive all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be rx
+ * @param int* len - len to be rx, also how many bytes were actually rx is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
 */
 int recvall(int s, unsigned char *buf, int *len)
 {
@@ -155,83 +191,6 @@ int recvall(int s, unsigned char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
-int recieve_file_list()
-{
-
-    return 0;
-}
-
-int recieve_packet(int s)
-{
-    unsigned char buffer[1024];
-    unsigned char len;
-    int status;
-    unsigned char packet_type;
-    static int file_n = 0;
-    
-
-    if((status = recv(s,&packet_type,1,0)) == -1)  //first byte of packet is packet type, this is our header
-    {
-        //Error
-        perror("recv");
-        exit(1);
-    }
-    else if (status == 0)
-    {
-        return 0;  //Server hung up you
-    }
-
-    switch (packet_type)
-    {
-    case FILE_LIST_PACKET:  //File list packet
-        if ((status = recv(s, &len, 1, 0)) == -1)
-        {
-            // Error
-            perror("recv");
-            exit(1);
-        }
-        else if (status == 0)
-        {
-            return 0; // Server hung up you
-        }
-        int intPacketLen = (int)len;                   // Cast unsigned char to int
-        if (recvall(s, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
-        {
-            // Error
-            perror("recv_all");
-            exit(1);
-        }
-        //Print buffer
-        struct FileInfo fileInfo;
-        unpack(buffer,"256sll",fileInfo.name,&fileInfo.size,&fileInfo.creation_time);
-        // printf("%d.Name: %s Size: %ld bytes, Creation Time: %s\n", file_no,fileInfo.name,fileInfo.size,ctime(&fileInfo.creation_time));
-        // fflush(stdout);
-        //Add to the file_list data structure
-        file_list[file_n++] = fileInfo;
-        
-
-        return FILE_LIST_ACK;
-        break;
-    case FILE_PACKET:
-        //Start receiving a file
-        if(receiveFileOverSocket(s,file_list[file_no].name) !=0)
-        {
-            //errorr
-            perror("File Receive");
-            return -1;
-        }
-        return FILE_ACK;
-        break;
-
-    default:
-        return 0;
-        break;
-    }
-
-    return 1;
-}
-
-
 
 int client_handle()
 {
@@ -250,6 +209,7 @@ int client_handle()
    
     bool valid = false;
     static unsigned int a = 0;
+    static unsigned int state = 0;
 
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
@@ -297,6 +257,7 @@ int client_handle()
     freeaddrinfo(servinfo); // all done with this structure
 
     printf("Connected to the server.\n");
+    state = 1;
     /**** Successfully connected to Server till this point *********/
 
     //Load the file descriptors into master list
@@ -327,53 +288,98 @@ int client_handle()
         // run through the existing connections looking for data to read
         for (int i = 0; i <= fdmax; i++)
         {
-            if (FD_ISSET(i, &read_fds))  //If any of the read_fds is set
+            if (FD_ISSET(i, &read_fds)) // If any of the read_fds is set
             {
-                if (i == sockfd)  //If receive on socketfd
+                unsigned char buffer[1024];
+                if (i == sockfd) // If receive on socketfd
                 {
-                    // Yu have a message
-                    if ((nbytes = recieve_packet(i)) <= 0) // Protocol implementation, nbytes received here will be one which we posted in packet
+                    switch (state)
                     {
-                        // got error or connection closed by client
-                        if (nbytes == 0)
+                    case 1:
+                        int status;
+                        unsigned char len, packet_type;
+                        static int file_n = 0;
+                        if ((status = recv(i, &packet_type, 1, 0)) == -1) // first byte of packet is packet type, this is our header
                         {
-                            // connection closed
-                            printf("selectserver: socket %d hung up\n", i);
-                        }
-                        else
-                        {
+                            // Error
                             perror("recv");
+                            return -1;
                         }
-                        close(i);           // bye!
-                        FD_CLR(i, &master); // remove from master set
-                    }
-                    else
-                    {
-                        //Handle response to sucessful packet
-                        switch (nbytes)
+                        else if (status == 0)
                         {
-                        case FILE_LIST_ACK:
-                            file_count++;
-                            
+                            printf("selectserver: socket %d hung up\n", i);
+                            state = 0;
+                            close(i);           // bye!
+                            FD_CLR(i, &master); // remove from master set
+                        }
+                        // Analyze the packet header
+                        switch (packet_type)
+                        {
+                        case 0x01:    // File info packet
+                            if ((status = recv(i, &len, 1, 0)) == -1) // Receive len
+                            {
+                                // Error
+                                perror("recv");
+                                return -1;
+                            }
+                            else if (status == 0)
+                            {
+                                printf("selectserver: socket %d hung up\n", i);
+                                state = 0; // Server hung up you
+                                close(i);           // bye!
+                                FD_CLR(i, &master); // remove from master set
+                            }
+                            int intPacketLen = (int)len;                 // Cast unsigned char to int
+                            if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
+                            {
+                                // Error
+                                perror("recv_all");
+                                return -1;
+                            }
+                            // Print buffer
+                            struct FileInfo fileInfo;
+                            unpack(buffer, "256sll", fileInfo.name, &fileInfo.size, &fileInfo.creation_time);
+                            // printf("%d.Name: %s Size: %ld bytes, Creation Time: %s\n", file_no,fileInfo.name,fileInfo.size,ctime(&fileInfo.creation_time));
+                            // fflush(stdout);
+                            // Add to the file_list data structure
+                            file_list[file_n++] = fileInfo;
+                            file_count = file_n;
                             break;
-                        case FILE_ACK:
-                        printf("\nfile received!\n");
+                        case 0xBF:     // File Info end
+                            print_files(file_count, file_list);
+                            state = 2; // File dir ready with us, prompt user to send file no to server on stdin
                             break;
-                        
+
                         default:
                             break;
                         }
+
+                        break;
+
+                    case 5: // expect a file from server
+                        if (receiveFileOverSocket(i, file_list[file_no].name) != 0)
+                        {
+                            // errorr
+                            perror("File Receive");
+                            return -1;
+                        }
+                        printf("Receive Successful!");
+                        state = 2;  //File receive cycle completed, clean up and go back to receiving file again
+                        break;
+
+                    default:
+                        break;
                     }
                 }
                 else if(i == fd)  //stdin, every time if something is available on stdin
                 {
-                    switch (a)
+                    switch (state)
                     {
-                    case 0:
+                    case 2:
                         // Get the File list by just pressing enter
                         fgets(buff, sizeof(buff), stdin);
                         buff[strcspn(buff, "\n")] = '\0'; // remove the new line
-                        print_files(file_count, file_list);
+                        //print_files(file_count, file_list);
                         if (file_count > 0)
                         {
                             // Now you can send to server the request file no
@@ -385,9 +391,9 @@ int client_handle()
                         }
                         printf("\n\n Enter File number to get: ");
                         fflush(stdout);
-                        a = 1;
+                        state = 3;  //Printed the file list now, get the  file no
                         break;
-                    case 1:
+                    case 3:   //After printing files get a valid file no
                         // Get File name
                         while (!(valid))
                         {
@@ -411,16 +417,9 @@ int client_handle()
                                 fflush(stdout);
                             }
                         }
+                        valid = false;
+                        state = 4;  //Go to next state, send the file no to Server
 
-                        //valid = false;
-                        send_file_req_flag = true;
-
-                        a = 2;
-                        break;
-                    case 2:
-                        // You sent the file no to server
-                        printf("\nWait! processing your request\n");
-                        a = 3;
                         break;
 
                     default:
@@ -430,22 +429,28 @@ int client_handle()
             }
             if (FD_ISSET(i, &write_fds))
             {
-                 // Socket is ready for writing
-                 if(send_file_req_flag == true)
-                 {
-                    unsigned char tmp[3];
-                    int t_len = 2;
-                    packi16(tmp,file_no);
-                    if(sendall(sockfd,tmp,&t_len) == -1)
+                if( i == sockfd)
+                {
+                    switch (state)
                     {
-                        perror("sendall");
+                    case 4:  //Send the file no to server
+                        unsigned char tmp[3];
+                        int t_len = 2;
+                        packi16(tmp, file_no);
+                        if (sendall(i, tmp, &t_len) == -1)
+                        {
+                            perror("sendall");
+                            return -1;
+                        }
+                        printf("\nSending request for File no: %u Name: %s", file_no, file_list[file_no].name);
+                        fflush(stdout);
+                        state = 5; //Expect the data from server
+                        break;
+                    
+                    default:
+                        break;
                     }
-                    printf("\nSending request for File no: %u Name: %s", file_no,file_list[file_no].name);
-                    fflush(stdout);
-                    valid = false;
-                    send_file_req_flag = false;
-
-                 }
+                }
             }
         }
     }
