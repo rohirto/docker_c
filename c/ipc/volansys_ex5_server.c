@@ -34,9 +34,14 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include <errno.h>
 
 
 #define PORT "9034" // port we're listening on
+
+#define TIMEOUT_SECONDS 120
+#define TIMEOUT_MICROSECONDS 0
+
 const char* dir_path = "../ipc/";
 volatile bool error_flag = false;
 volatile int send_file_flag = -1;
@@ -238,6 +243,12 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     int nbytes;
 
     static unsigned int state = 0;  //State of the server
+
+    struct timeval timeout;       //Set timout for 120 seconds
+    timeout.tv_sec = 120;
+    timeout.tv_usec = 0;
+    time_t last_activity_time[10]; // Array to store the last activity time for each client
+
     /********************************************************/
 
     //Macros for select()
@@ -343,6 +354,9 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                                          remoteIP, INET6_ADDRSTRLEN),
                                newfd);
                         
+                        //Set the start time
+                        last_activity_time[newfd] = time(NULL);
+                        
                         //Writes to socket to be handled by writefds
                         state = 1; //Now we can send file list to client
                         //Send the File list to client
@@ -390,6 +404,9 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                     default:
                         break;
                     }
+
+                    //Update the last time
+                    last_activity_time[i] = time(NULL);
                 } // END handle data from client
             }     // END got new incoming connection
             if (FD_ISSET(i, &write_fds))
@@ -462,7 +479,22 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                     //}
                 }
             }
-        }         // END looping through file descriptors
+        } // END looping through file descriptors
+        //Check for timouts
+        for (i = 0; i <= fdmax; i++)  
+        {
+            if (i != listener && FD_ISSET(i, &master))
+            {
+                time_t current_time = time(NULL);
+                if (current_time - last_activity_time[i] >= TIMEOUT_SECONDS)
+                {
+                    // Client has been idle for TIMEOUT_SECONDS, close the connection
+                    printf("Client on socket %d has been idle for too long, closing the connection\n", i);
+                    close(i);           // bye!
+                    FD_CLR(i, &master); // remove from master set
+                }
+            }
+        }
     }          
 
 }

@@ -79,6 +79,15 @@ int receiveFileOverSocket(int socket, const char* filePath)
         return -1;
     }
 
+    char data;
+    if(recv(socket,&data,1, MSG_PEEK) == 0) //read one byte
+    {
+        // Socket closed
+        perror("recvall");
+        fclose(file);
+        return -1;
+    }
+
     printf("\nRecieve in progress.. ");
     fflush(stdout);
     char buf[1024];
@@ -442,9 +451,20 @@ int client_handle()
                             perror("sendall");
                             return -1;
                         }
-                        printf("\nSending request for File no: %u Name: %s", file_no, file_list[file_no].name);
-                        fflush(stdout);
-                        state = 5; //Expect the data from server
+                        if(t_len == 0)
+                        {
+                            // Server hung up on you
+                            printf("selectserver: socket %d hung up\n", i);
+                            state = 0;          // Server hung up you
+                            close(i);           // bye!
+                            FD_CLR(i, &master); // remove from master set
+                        }
+                        else
+                        {
+                            printf("\nSending request for File no: %u Name: %s", file_no, file_list[file_no].name);
+                            fflush(stdout);
+                            state = 5; //Expect the data from server
+                        }
                         break;
                     
                     default:
