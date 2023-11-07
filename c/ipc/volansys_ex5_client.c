@@ -73,18 +73,20 @@ int write_all(FILE *file, const void *buf, int len)
 int receiveFileOverSocket(int socket, const char* filePath) 
 {
     int rval;
-    FILE* file = fopen(filePath, "wb");
-    if (file == NULL) {
-        perror("Error opening file for writing");
-        return -1;
-    }
+    
 
     char data;
     if(recv(socket,&data,1, MSG_PEEK) == 0) //read one byte
     {
         // Socket closed
         perror("recvall");
-        fclose(file);
+        fprintf(stderr,"selectserver: socket %d hung up\n", socket);
+        return -1;
+    }
+
+    FILE* file = fopen(filePath, "wb");
+    if (file == NULL) {
+        perror("Error opening file for writing");
         return -1;
     }
 

@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 
 
 #define PORT "9034" // port we're listening on
@@ -53,6 +54,8 @@ struct FileInfo
     time_t creation_time;
 };
 
+
+
 /** 
  * @brief Error Handling
 */
@@ -62,6 +65,17 @@ void cleanup(struct FileInfo* file_list, int file_count)
         // Free any resources within the FileInfo structure, if needed
     }
     free(file_list);
+}
+
+/**
+ * @brief SIGINT Handler
+*/
+void sigint_handler(int signum) 
+{
+    printf("Received SIGINT (Ctrl+C)\n");
+    // Handle the SIGINT signal, e.g., perform cleanup or take specific actions.
+    error_flag = true;
+    
 }
 
 
@@ -176,6 +190,11 @@ int send_file_list(int s,struct FileInfo* file_list, int file_count)
     return 1;
 }
 
+/**
+ * @brief Send a File over socket
+ * @param int socket - File Descriptor of the socket
+ * @param const char* filepath - filename along with file path of the file to be sent
+*/
 int sendFileOverSocket(int socket, const char* filePath) 
 {
     struct stat s;
@@ -239,8 +258,6 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     int yes = 1; // for setsockopt() SO_REUSEADDR, below
     int i, rv;
     struct addrinfo hints, *ai, *p;
-    unsigned char buf[1024];
-    int nbytes;
 
     static unsigned int state = 0;  //State of the server
 
@@ -359,13 +376,6 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                         
                         //Writes to socket to be handled by writefds
                         state = 1; //Now we can send file list to client
-                        //Send the File list to client
-                        // if(send_file_list(newfd,fileInfo,file_count) == -1)
-                        // {
-                        //     perror("send file list");
-                        // }
-
-                        //file_list_resp = true;
                     }
                 }
                 else
@@ -378,7 +388,6 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                         if(recvall(i,tmp,&t_len) == -1)
                         {
                             perror("recvall");
-                            error_flag = true;
                             close(i);           // bye!
                             FD_CLR(i, &master); // remove from master set
                             fprintf(stderr,"selectserver: socket %d hung up\n", i);
@@ -441,42 +450,6 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                     default:
                         break;
                     }
-                    // Socket ready for writing
-                    // if (send_file_flag > -1)
-                    // {
-                    //     char path[256];
-                    //     sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
-                    //     printf("Sending File: %s\n", path);
-                    //     fflush(stdout);
-                    //     if (sendFileOverSocket(i, path) == -1)
-                    //     {
-                    //         perror("file send");
-                    //         fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
-                    //     }
-                        // //Send the requested file
-                        // int pid = fork();
-                        // if (pid == 0)
-                        // {
-                        //     char path[256];
-                        //     sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
-                        //     if(sendFileOverSocket(i,path) == -1)
-                        //     {
-                        //         perror("file send");
-                        //         fprintf(stderr, "File Send Failed for file no: %d",send_file_flag);
-                        //     }
-
-                        // }
-                        // else if(pid > 0)
-                        // {
-                        //     //Parent process
-
-                        // }
-                        // else if(pid < 0)
-                        // {
-                        //     perror("fork");
-                        //     fprintf(stderr,"Fork failed");
-                        // }
-                    //}
                 }
             }
         } // END looping through file descriptors
@@ -494,6 +467,10 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                     FD_CLR(i, &master); // remove from master set
                 }
             }
+        }
+        if(error_flag == true)
+        {
+            return -1;
         }
     }          
 
@@ -516,6 +493,11 @@ void print_files(int file_count, struct FileInfo* file_list)
 
 /**
  * 1. Server on-startup should scan pre-defined directory and create list of files.
+*/
+/**
+ * @brief List all files in the dirpath variable on startup
+ * @param struct FileInfo** file_list - Note its pointer to pointer - needed for dynamic resizing of array
+ * @param int* file_count - the address of variable where file count is stored
 */
 int list_all_files(struct FileInfo** file_list, int* file_count) 
 {
@@ -568,10 +550,16 @@ int main()
     struct FileInfo* file_list = NULL;
     int file_count = 0;
 
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+
     //Do the part one of Exercise
     if (list_all_files(&file_list, &file_count) != 0) 
     {
         perror("files initialize");
+        free(file_list);
         exit(1);
     }
 
@@ -585,7 +573,7 @@ int main()
     }
     //Convert 
 
-    free(file_list);
+    //free(file_list);
 
     return 0;
 }
