@@ -13,6 +13,8 @@
 #include <netdb.h>
 #include <stdbool.h>
 #include <time.h>
+#include <errno.h>
+#include <signal.h>
 
 #define SERVER_IP "127.0.0.1" // Replace with the server's IP address
 #define SERVER_PORT "9034"    // Replace with the server's port
@@ -34,6 +36,8 @@ volatile unsigned int file_no = 0;
 
 //Function Prototypes
 int recvall(int , void *, int *);
+
+
 
 /**
  * @brief Print the files in the directory
@@ -86,7 +90,6 @@ int receiveFileOverSocket(int socket, const char* filePath)
 {
     
     
-
     char data;
     if(recv(socket,&data,1, MSG_PEEK) == 0) //read one byte
     {
@@ -170,12 +173,17 @@ int sendall(int s, unsigned char *buf, int *len)
 {
     int total = 0;        // how many bytes we've sent
     int bytesleft = *len; // how many we have left to send
-    int n =0;
+    int n = 0;
     while (total < *len)
     {
-        n = send(s, buf + total, bytesleft, 0);  
+        n = send(s, buf + total, bytesleft, 0);
         if (n == -1)
         {
+            fprintf(stderr,"Error no: %d",errno);
+            if (errno == EPIPE || errno == ECONNRESET)
+            {
+                return -1;
+            }
             break;
         }
         total += n;
@@ -230,7 +238,6 @@ int client_handle()
     
    
     bool valid = false;
-    static unsigned int a = 0;
     static unsigned int state = 0;
 
     //Macros for select()
@@ -279,6 +286,7 @@ int client_handle()
     freeaddrinfo(servinfo); // all done with this structure
 
     printf("Connected to the server.\n");
+    time_t last_activity_time = time(NULL);
     state = 1;
     /**** Successfully connected to Server till this point *********/
 
@@ -397,6 +405,8 @@ int client_handle()
                     default:
                         break;
                     }
+                    // Update the last time
+                    last_activity_time = time(NULL);
                 }
                 else if(i == fd)  //stdin, every time if something is available on stdin
                 {
@@ -471,7 +481,7 @@ int client_handle()
                             perror("sendall");
                             return -1;
                         }
-                        if(t_len == 0)
+                        if (t_len == 0)
                         {
                             // Server hung up on you
                             printf("selectserver: socket %d hung up\n", i);
@@ -479,19 +489,28 @@ int client_handle()
                             close(i);           // bye!
                             FD_CLR(i, &master); // remove from master set
                         }
-                        else
-                        {
-                            printf("\nSending request for File no: %u Name: %s", file_no, file_list[file_no].name);
-                            fflush(stdout);
-                            state = 5; //Expect the data from server
+                            else
+                            {
+                                printf("\nSending request for File no: %u Name: %s", file_no, file_list[file_no].name);
+                                fflush(stdout);
+                                state = 5; // Expect the data from server
+                            }
+                            break;
+
+                        default:
+                            break;
                         }
-                        break;
-                    
-                    default:
-                        break;
-                    }
                 }
             }
+        }
+        time_t current_time = time(NULL);
+        if (current_time - last_activity_time >= 120)
+        {
+            // Client has been idle for TIMEOUT_SECONDS, close the connection
+            printf("Client on socket %d has been idle for too long, closing the connection\n", sockfd);
+            close(sockfd);             // bye!
+            FD_CLR(sockfd, &master); // remove from master set
+            return -1;
         }
     }
 
@@ -500,6 +519,7 @@ int client_handle()
 
 int main() 
 {
+
     if(client_handle() == -1)
     {
         //error has occured
