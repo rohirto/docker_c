@@ -15,8 +15,17 @@
  * 
  * Connection Oriented Approach needed here: 
  * 
- * Can use threads for concurrency on server side
- * Go step wise
+ * The code needs a archived library to included during compilation for referencing functions related to pack and unpack
+ * Steps to Compile this code:
+ * 1. Make a archive library out of pack_unpack.c 
+ *      a. $ gcc -Wall -fPIC -c pack_unpack.c -o pack_unpack.o
+ *      b. $ ar rcs libmylib.a pack_unpack.o
+ * 2. compile the server file
+ *      a. $ gcc -Wall server.c -Larchive_lib -lmylib  ==> will create a a.out, archive_lib is location of our archive lib
+ * 3. Execute the file
+ *      a. $ ./a.out
+ * 
+ * Do similar above steps for client
  * 
 */
 
@@ -265,40 +274,158 @@ int sendFileOverSocket(int socket, const char* filePath)
 }
 
 /**
+ * @brief Fork child process client handler
+ * @param int s - socket file descriptor
+ * @param struct FileInfo* fileInfo - pointer to file dir data structure
+ * @param int file_count - no of file in file dir
+ * 
+ * @return -1 on failure, does not return in normal conditions
+*/
+int server_handle_client(int s, struct FileInfo* fileInfo, int file_count)
+{
+    time_t last_activity_time = time(NULL);
+    fd_set c_master;                      // master file descriptor list
+    fd_set c_read_fds;                    // temp file descriptor list for select()
+    fd_set c_write_fds;
+    int c_fdmax;
+    static unsigned int state = 1;
+
+    //Macros for select()
+    FD_ZERO(&c_master); // clear the master and temp sets
+    FD_ZERO(&c_read_fds);
+    FD_ZERO(&c_write_fds);
+
+    FD_SET(s, &c_master);
+    // keep track of the biggest file descriptor
+    c_fdmax = s; // so far, it's this one
+    while (1)
+    {
+        
+        c_read_fds = c_master;                                              // copy it, need to keep a safe copy of master fds
+        c_write_fds = c_master;                                             ////Save a copy of master
+        if (select(c_fdmax + 1, &c_read_fds, &c_write_fds, NULL, NULL) == -1) 
+        {
+            perror("select");
+            // exit(4);
+            // error_flag = true;
+            return -1;
+        }
+        // run through the existing connections looking for data to read
+        if (FD_ISSET(s, &c_read_fds))
+        {
+            switch (state)
+            {
+            case 2: // Expect a file no from user
+                unsigned char tmp[3];
+                int t_len = 2;
+                // Check if client still connected or not
+                if (check_connection(s) == -1)
+                {
+                    // Client hung up
+                    perror("recvall");
+                    close(s);           // bye!
+                    FD_CLR(s, &c_master); // remove from master set
+                    fprintf(stderr, "selectserver: socket %d hung up\n", s);
+                    return -1;
+                }
+                if (recvall(s, tmp, &t_len) == -1)
+                {
+                    perror("recvall");
+                    close(s);           // bye!
+                    FD_CLR(s, &c_master); // remove from master set
+                    fprintf(stderr, "selectserver: socket %d hung up\n", s);
+                    return -1;
+                }
+                int file_no = unpacki16(tmp);
+                send_file_flag = file_no;
+
+                printf("\n Received Req for File no:%d\n", file_no);
+                fflush(stdout);
+
+                state = 3; // Go to next state, write the file to socket
+                break;
+
+            case 4: // Do the clean up
+                printf("\n File Cycle over, starting again\n");
+                state = 2;
+                break;
+
+            default:
+                break;
+            }
+
+            // Update the last time
+            last_activity_time = time(NULL);
+
+        } // END handle data from client
+        if (FD_ISSET(s, &c_write_fds))
+        {
+            switch (state)
+            {
+            case 1: // ready to send the file list to client
+                if (send_file_list(s, fileInfo, file_count) == -1)
+                {
+                    perror("send file list");
+                    return -1;
+                }
+                state = 2; // Next state, expect a file no from client
+                break;
+            case 3: // Send the file over socket
+                if (send_file_flag > -1)
+                {
+                    char path[256];
+                    sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
+                    printf("Sending File: %s\n", path);
+                    fflush(stdout);
+                    if (sendFileOverSocket(s, path) == -1)
+                    {
+                        perror("file send");
+                        fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
+                        return -1;
+                    }
+                }
+                state = 4; // Goto next state, clean up and start over again
+                break;
+
+            default:
+                break;
+            }
+        }
+        // Check for timouts
+
+        time_t current_time = time(NULL);
+        if (current_time - last_activity_time >= TIMEOUT_SECONDS)
+        {
+            // Client has been idle for TIMEOUT_SECONDS, close the connection
+            printf("Client on socket %d has been idle for too long, closing the connection\n", s);
+            close(s);             // bye!
+            FD_CLR(s, &c_master); // remove from master set
+            return -1;
+        }
+    }
+}
+/**
  * @brief Main Server Handler
  * @param struct FileInfo* file_list - starting pointer to the data structure that holds the file dir info
  * @param int file count - No of elements in the directory
  * @returns -1 on failure, returns only on failure
 */
-int server_handle(struct FileInfo* fileInfo, int file_count)
+int server_handle(struct FileInfo *fileInfo, int file_count)
 {
     /***** LOCAL VARIABLES *******************************/
-    fd_set master;                      // master file descriptor list
-    fd_set read_fds;                    // temp file descriptor list for select()
-    fd_set write_fds;
-    int fdmax;                          // maximum file descriptor number
     int listener;                       // listening socket descriptor
     int newfd;                          // newly accept()ed socket descriptor
     struct sockaddr_storage remoteaddr; // client address
     socklen_t addrlen;
     char remoteIP[INET6_ADDRSTRLEN];
     int yes = 1; // for setsockopt() SO_REUSEADDR, below
-    int i, rv;
+    int rv;
     struct addrinfo hints, *ai, *p;
 
-    static unsigned int state = 0;  //State of the server
+    static unsigned int state = 0; // State of the server
 
-    struct timeval timeout;       //Set timout for 120 seconds
-    timeout.tv_sec = 120;
-    timeout.tv_usec = 0;
-    time_t last_activity_time[10]; // Array to store the last activity time for each client
 
     /********************************************************/
-
-    //Macros for select()
-    FD_ZERO(&master); // clear the master and temp sets
-    FD_ZERO(&read_fds);
-    FD_ZERO(&write_fds);
 
     // get us a socket and bind it
     memset(&hints, 0, sizeof hints);
@@ -306,16 +433,16 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0)   //fill up the structs
+    if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) // fill up the structs
     {
         fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
-        //exit(1);
-        //error_flag = true;
+        // exit(1);
+        // error_flag = true;
         return -1;
     }
     for (p = ai; p != NULL; p = p->ai_next)
     {
-        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);  //Create the socket descriptor
+        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol); // Create the socket descriptor
         if (listener < 0)
         {
             continue;
@@ -334,8 +461,8 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     if (p == NULL)
     {
         fprintf(stderr, "selectserver: failed to bind\n");
-        //exit(2);
-        //error_flag = true;
+        // exit(2);
+        // error_flag = true;
         return -1;
     }
 
@@ -345,176 +472,55 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
     if (listen(listener, 10) == -1)
     {
         perror("listen");
-        //exit(3);
-        //error_flag = true;
+        // exit(3);
+        // error_flag = true;
         return -1;
     }
 
-    // add the listener to the master set
-    FD_SET(listener, &master);
-
-    // keep track of the biggest file descriptor
-    fdmax = listener; // so far, it's this one
     // main loop
     for (;;)
     {
-        read_fds = master; // copy it, need to keep a safe copy of master fds
-        write_fds = master; ////Save a copy of master
-        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //we are only interested in readfds
+
+        // handle new connections
+        addrlen = sizeof remoteaddr;
+        newfd = accept(listener,
+                       (struct sockaddr *)&remoteaddr,
+                       &addrlen);
+        if (newfd == -1)
         {
-            perror("select");
-            //exit(4);
-            //error_flag = true;
-            return -1;
+            perror("accept");
         }
-        // run through the existing connections looking for data to read
-        for (i = 0; i <= fdmax; i++)
+        else
         {
-            if (FD_ISSET(i, &read_fds))
-            { 
-                // we got one!!
-                if (i == listener)  //Listener is waiting for new connections, and got a new one
-                {
-                    // handle new connections
-                    addrlen = sizeof remoteaddr;
-                    newfd = accept(listener,
-                                   (struct sockaddr *)&remoteaddr,
-                                   &addrlen);
-                    if (newfd == -1)
-                    {
-                        perror("accept");
-                    }
-                    else
-                    {
-                        FD_SET(newfd, &master); // add to master set
-                        if (newfd > fdmax)
-                        { // keep track of the max
-                            fdmax = newfd;
-                        }
-                        printf("selectserver: new connection from %s on "
-                               "socket %d\n",
-                               inet_ntop(remoteaddr.ss_family,
-                                         get_in_addr((struct sockaddr *)&remoteaddr),
-                                         remoteIP, INET6_ADDRSTRLEN),
-                               newfd);
-                        
-                        //Set the start time
-                        last_activity_time[newfd] = time(NULL);
-                        
-                        //Writes to socket to be handled by writefds
-                        state = 1; //Now we can send file list to client
-                    }
-                }
-                else
-                {
-                    switch (state)
-                    {
-                    case 2:   //Expect a file no from user
-                        unsigned char tmp[3];
-                        int t_len = 2;
-                        //Check if client still connected or not
-                        if(check_connection(i) == -1)
-                        {
-                            //Client hung up
-                            perror("recvall");
-                            close(i);           // bye!
-                            FD_CLR(i, &master); // remove from master set
-                            fprintf(stderr,"selectserver: socket %d hung up\n", i);
-                            state = 0;
-                            break;
-                        }
-                        if(recvall(i,tmp,&t_len) == -1)
-                        {
-                            perror("recvall");
-                            close(i);           // bye!
-                            FD_CLR(i, &master); // remove from master set
-                            fprintf(stderr,"selectserver: socket %d hung up\n", i);
-                            state = 0;
-                            break;
-                            
-                        }
-                        int file_no = unpacki16(tmp);
 
-                         
+            printf("selectserver: new connection from %s on "
+                   "socket %d\n",
+                   inet_ntop(remoteaddr.ss_family,
+                             get_in_addr((struct sockaddr *)&remoteaddr),
+                             remoteIP, INET6_ADDRSTRLEN),
+                   newfd);
 
-                        send_file_flag = file_no;
-
-                        printf("\n Received Req for File no:%d\n", file_no);
-                        fflush(stdout);
-
-                        state = 3;  //Go to next state, write the file to socket
-                        break;
-
-                    case 4: //Do the clean up
-                            printf("\n File Cycle over, starting again\n");
-                            state = 2;
-                        break;
-                    
-                    default:
-                        break;
-                    }
-
-                    //Update the last time
-                    last_activity_time[i] = time(NULL);
-                } // END handle data from client
-            }     // END got new incoming connection
-            if (FD_ISSET(i, &write_fds))
+            // Create a child process to handle this client
+            if (fork() == 0)
             {
-                if (i == newfd)
+                // This is the child process
+                close(listener); // The child doesn't need the listener socket
+                if (server_handle_client(newfd, fileInfo, file_count) == -1)
                 {
-                    switch (state)
-                    {
-                    case 1: //ready to send the file list to client
-                        if(send_file_list(i,fileInfo,file_count) == -1)
-                        {
-                            perror("send file list");
-                        }
-                        state = 2; //Next state, expect a file no from client
-                        break;
-                    case 3: //Send the file over socket
-                        if (send_file_flag > -1)
-                        {
-                            char path[256];
-                            sprintf(path, "%s%s", dir_path, fileInfo[send_file_flag].name);
-                            printf("Sending File: %s\n", path);
-                            fflush(stdout);
-                            if (sendFileOverSocket(i, path) == -1)
-                            {
-                                perror("file send");
-                                fprintf(stderr, "File Send Failed for file no: %d", send_file_flag);
-                            }
-                        }
-                        state = 4;  //Goto next state, clean up and start over again
-                        break;
-
-                    default:
-                        break;
-                    }
+                    // Client Hungup
+                    printf("\n Client Humg up or Inactivity\n");
                 }
-            }
-        } // END looping through file descriptors
-        //Check for timouts
-        for (i = 0; i <= fdmax; i++)  
-        {
-            if (i != listener && FD_ISSET(i, &master))
-            {
-                time_t current_time = time(NULL);
-                if (current_time - last_activity_time[i] >= TIMEOUT_SECONDS)
-                {
-                    // Client has been idle for TIMEOUT_SECONDS, close the connection
-                    printf("Client on socket %d has been idle for too long, closing the connection\n", i);
-                    close(i);           // bye!
-                    FD_CLR(i, &master); // remove from master set
-                }
+                printf("Exiting Client Socket %d Handle\n",newfd);
+                exit(0); // Terminate the child process
             }
         }
-        if(error_flag == true)
+        if (error_flag == true)
         {
             return -1;
         }
-    }          
-
+    }
 }
+
 /**
  * @brief Print the files in the directory
  * @param int file_count, no of file in directory
