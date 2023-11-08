@@ -17,14 +17,9 @@
 #define SERVER_IP "127.0.0.1" // Replace with the server's IP address
 #define SERVER_PORT "9034"    // Replace with the server's port
 
-#define FILE_LIST_PACKET    0x01
-#define FILE_LIST_ACK       0x02
-#define FILE_PACKET         0x03
-#define FILE_ACK            0x04
-
-
-
-
+/**
+ * @brief Struct to store the Metadata of file 
+*/
 struct FileInfo
 {
     char name[256];
@@ -32,10 +27,13 @@ struct FileInfo
     time_t creation_time;
 };
 
-
+//Global Variables
 struct FileInfo file_list[1024];
-unsigned int  file_count = 0;
-unsigned int file_no = 0;
+volatile unsigned int  file_count = 0;
+volatile unsigned int file_no = 0;
+
+//Function Prototypes
+int recvall(int , void *, int *);
 
 /**
  * @brief Print the files in the directory
@@ -48,11 +46,19 @@ void print_files(int file_count, struct FileInfo* file_list)
     printf("List of files in the directory:\n");
     for (int i = 0; i < file_count; i++) 
     {
-        printf("Name: %s, Size: %ld bytes, Creation Time: %s", file_list[i].name, file_list[i].size, ctime(&file_list[i].creation_time));
+        printf("%d. Name: %s, Size: %ld bytes, Creation Time: %s",i+1, file_list[i].name, file_list[i].size, ctime(&file_list[i].creation_time));
     }
     printf("Total files: %d\n", file_count);
 }
 
+/**
+ * @brief Function used by receive file over socket function to write a buffer to file pointer
+ * @param FILE* file - The file pointer where the buffer is to be written
+ * @param const void* buf - the buffer where data is to be read from
+ * @param int len - len of buffer to be written in file
+ * @returns -1 on failure, 0 on success
+ * 
+*/
 int write_all(FILE *file, const void *buf, int len)
 {
     const char *pbuf = (const char *) buf;
@@ -70,9 +76,15 @@ int write_all(FILE *file, const void *buf, int len)
     return 0;
 }
 
+/**
+ * @brief Receive a File over Socket
+ * @param int socket - the file descriptor of socket
+ * @param const char* filepath - the name of the file, along with it's path to be received
+ * @returns -1 on failure, 0 on success
+*/
 int receiveFileOverSocket(int socket, const char* filePath) 
 {
-    int rval;
+    
     
 
     char data;
@@ -92,8 +104,7 @@ int receiveFileOverSocket(int socket, const char* filePath)
 
     printf("\nRecieve in progress.. ");
     fflush(stdout);
-    char buf[1024];
-    unsigned char bytesRead = -1;
+    
     long size = 0;
     int len_to_rx = sizeof(size);
     if (recvall(socket, &size, &len_to_rx) == 0)
@@ -102,10 +113,11 @@ int receiveFileOverSocket(int socket, const char* filePath)
         
         while (size > 0)
         {
+            char buf[1024];
             len_to_rx = min(sizeof(buf), size);
             if (recvall(socket, buf, &len_to_rx) == 0)
             {
-                rval = len_to_rx;
+                int rval = len_to_rx;
                 if (rval == 0)
                     break;
                 if (write_all(file, buf, rval) == -1)
@@ -129,8 +141,7 @@ int receiveFileOverSocket(int socket, const char* filePath)
     }
     
     fclose(file);
-    printf("\n File recieved Successfully!");
-    fflush(stdout);
+    printf("\n File recieved Successfully!, Press Enter to Continue\n");
     return 0;
 }
 
@@ -183,14 +194,15 @@ int sendall(int s, unsigned char *buf, int *len)
  * 
  * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
 */
-int recvall(int s, unsigned char *buf, int *len)
+int recvall(int s, void *buf, int *len)
 {
+    unsigned char* buff = (unsigned char*) buf;
     int total = 0;        // how many bytes we've received
     int bytesleft = *len; // how many bytes we have left to receive
     int n = 0;
     while (total < *len)
     {
-        n = recv(s, buf + total, bytesleft, 0);
+        n = recv(s, buff + total, bytesleft, 0);
         if (n == -1)
         {
             break;
@@ -214,7 +226,6 @@ int client_handle()
     int rv;
     struct addrinfo hints, *servinfo, *p;
     char s[INET6_ADDRSTRLEN];
-    int nbytes;
     unsigned char buff[20];
     
    
@@ -301,7 +312,7 @@ int client_handle()
         {
             if (FD_ISSET(i, &read_fds)) // If any of the read_fds is set
             {
-                unsigned char buffer[1024];
+                
                 if (i == sockfd) // If receive on socketfd
                 {
                     switch (state)
@@ -340,6 +351,7 @@ int client_handle()
                                 close(i);           // bye!
                                 FD_CLR(i, &master); // remove from master set
                             }
+                            unsigned char buffer[1024];
                             int intPacketLen = (int)len;                 // Cast unsigned char to int
                             if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
                             {
@@ -358,6 +370,7 @@ int client_handle()
                             break;
                         case 0xBF:     // File Info end
                             print_files(file_count, file_list);
+                            printf("\nPlease press Enter to Proceed \n");
                             state = 2; // File dir ready with us, prompt user to send file no to server on stdin
                             break;
 
@@ -374,8 +387,11 @@ int client_handle()
                             perror("File Receive");
                             return -1;
                         }
-                        printf("Receive Successful!");
-                        state = 2;  //File receive cycle completed, clean up and go back to receiving file again
+                        else
+                        {
+                            //printf("Receive Successful!");
+                            state = 2; // File receive cycle completed, clean up and go back to receiving file again
+                        }
                         break;
 
                     default:
@@ -414,12 +430,14 @@ int client_handle()
 
                             fgets(buff, sizeof(buff), stdin);
 
-                            if ((file_no = atoi(buff)) != 0)
+                            if ((file_no = atoi(buff)) != 0)  //atoi returns zero on invalid input thus need an alternative logic
                             {
-                                if(file_no < file_count)
+                                if(file_no < file_count+1)
                                 {
                                     // Correct value
                                     valid = true;
+                                    //Can reduce the file no 
+                                    file_no--;  //If user enters 1 (for first file), which is stored at zero index of our struct
                                 }
                             }
                             else
@@ -485,6 +503,7 @@ int main()
     if(client_handle() == -1)
     {
         //error has occured
+        perror("\n Client Error Exiting the CODE!\n");
     }
 
     return 0;
