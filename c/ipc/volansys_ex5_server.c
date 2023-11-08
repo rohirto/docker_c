@@ -37,16 +37,20 @@
 #include <errno.h>
 #include <signal.h>
 
-
+//Defines
 #define PORT "9034" // port we're listening on
 
-#define TIMEOUT_SECONDS 120
+#define TIMEOUT_SECONDS 120  //Time out of 120 seconds
 #define TIMEOUT_MICROSECONDS 0
 
+//Global Variables
 const char* dir_path = "../ipc/";
-volatile bool error_flag = false;
-volatile int send_file_flag = -1;
+volatile bool error_flag = false;  //Flag to indicate Error has occured or not
+volatile int send_file_flag = -1;   //Flag to indicate if to send a file or not, -1 when on file to send, value greater than zero to indicate file no to send
 
+/**
+ * @brief Struct to store the Metadata of file 
+*/
 struct FileInfo 
 {
     char name[256];
@@ -61,10 +65,12 @@ struct FileInfo
 */
 void cleanup(struct FileInfo* file_list, int file_count) 
 {
-    for (int i = 0; i < file_count; i++) {
+    for (int i = 0; i < file_count; i++) 
+    {
         // Free any resources within the FileInfo structure, if needed
     }
     free(file_list);
+    exit(0);
 }
 
 /**
@@ -102,14 +108,15 @@ void *get_in_addr(struct sockaddr *sa)
  * 
  * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
 */
-int sendall(int s, unsigned char *buf, int *len)
+int sendall(int s, void *buf, int *len)
 {
+    unsigned char* buff = (unsigned char*) buf;
     int total = 0;        // how many bytes we've sent
     int bytesleft = *len; // how many we have left to send
     int n =0;
     while (total < *len)
     {
-        n = send(s, buf + total, bytesleft, 0);      //Can use send or sendto
+        n = send(s, buff + total, bytesleft, 0);      //Can use send or sendto
                         
         if (n == -1)
         {
@@ -131,8 +138,9 @@ int sendall(int s, unsigned char *buf, int *len)
  * 
  * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
 */
-int recvall(int s, char *buf, int *len)
+int recvall(int s, unsigned char *buf, int *len)
 {
+
     int total = 0;        // how many bytes we've received
     int bytesleft = *len; // how many bytes we have left to receive
     int n = 0;
@@ -150,6 +158,24 @@ int recvall(int s, char *buf, int *len)
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
 }
 
+
+/**
+ * @brief check if the client is still connected or not
+ * @param int socket - file descriptor of the client socket 
+ * @returns -1 on closed socket, 1 on active socket
+*/
+int check_connection(int socket)
+{
+    char data;
+    if(recv(socket,&data,1, MSG_PEEK) == 0) //read one byte
+    {
+        // Socket closed
+        perror("recvall");
+        fprintf(stderr,"selectserver: socket %d hung up\n", socket);
+        return -1;
+    }
+    return 1;
+}
 /**
  * @brief Send File List to the client
  * @param int s - socket descriptor
@@ -178,7 +204,7 @@ int send_file_list(int s,struct FileInfo* file_list, int file_count)
             return -1;
         }
     }
-    printf("Total files converted: %d\n", file_count);
+    printf("Total files converted: %d Total bytes sent for last file:%u\n", file_count, len_to_send);
     fflush(stdout);
     printf("Sending Ending packet\n");
     unsigned char c = 0xBF; // End packet
@@ -194,6 +220,7 @@ int send_file_list(int s,struct FileInfo* file_list, int file_count)
  * @brief Send a File over socket
  * @param int socket - File Descriptor of the socket
  * @param const char* filepath - filename along with file path of the file to be sent
+ * @returns -1 on failure, 0 on success
 */
 int sendFileOverSocket(int socket, const char* filePath) 
 {
@@ -201,7 +228,7 @@ int sendFileOverSocket(int socket, const char* filePath)
     if (stat(filePath, &s) == -1)
     {
         printf("Can't get file info"); 
-        return;
+        return -1;
     }
     FILE* file = fopen(filePath, "rb");
     if (file == NULL) 
@@ -209,8 +236,7 @@ int sendFileOverSocket(int socket, const char* filePath)
         perror("File not found");
         return -1;
     }
-    char buf[1024];
-    size_t bytesRead;
+
 
     long size = s.st_size;
     long tmp_size = htonl(size);
@@ -219,6 +245,7 @@ int sendFileOverSocket(int socket, const char* filePath)
     {
         while (size > 0)
         { 
+            char buf[1024];
             int rval = fread(buf, 1, min(sizeof(buf), size), file); 
             if (rval < 1)
             {
@@ -241,7 +268,7 @@ int sendFileOverSocket(int socket, const char* filePath)
  * @brief Main Server Handler
  * @param struct FileInfo* file_list - starting pointer to the data structure that holds the file dir info
  * @param int file count - No of elements in the directory
- * @returns -1 on failure 
+ * @returns -1 on failure, returns only on failure
 */
 int server_handle(struct FileInfo* fileInfo, int file_count)
 {
@@ -385,12 +412,25 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
                     case 2:   //Expect a file no from user
                         unsigned char tmp[3];
                         int t_len = 2;
+                        //Check if client still connected or not
+                        if(check_connection(i) == -1)
+                        {
+                            //Client hung up
+                            perror("recvall");
+                            close(i);           // bye!
+                            FD_CLR(i, &master); // remove from master set
+                            fprintf(stderr,"selectserver: socket %d hung up\n", i);
+                            state = 0;
+                            break;
+                        }
                         if(recvall(i,tmp,&t_len) == -1)
                         {
                             perror("recvall");
                             close(i);           // bye!
                             FD_CLR(i, &master); // remove from master set
                             fprintf(stderr,"selectserver: socket %d hung up\n", i);
+                            state = 0;
+                            break;
                             
                         }
                         int file_no = unpacki16(tmp);
@@ -479,6 +519,7 @@ int server_handle(struct FileInfo* fileInfo, int file_count)
  * @brief Print the files in the directory
  * @param int file_count, no of file in directory
  * @param struct FileInfo* file_list Pointer to struct holding File info
+ * @returns none
  * 
 */
 void print_files(int file_count, struct FileInfo* file_list) 
@@ -498,6 +539,7 @@ void print_files(int file_count, struct FileInfo* file_list)
  * @brief List all files in the dirpath variable on startup
  * @param struct FileInfo** file_list - Note its pointer to pointer - needed for dynamic resizing of array
  * @param int* file_count - the address of variable where file count is stored
+ * @returns -1 on failure, 0 on success
 */
 int list_all_files(struct FileInfo** file_list, int* file_count) 
 {
