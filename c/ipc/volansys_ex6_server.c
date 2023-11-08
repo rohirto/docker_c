@@ -16,5 +16,300 @@
  * on how are you planning to implement the solution and get approval from the Mentor on the same.
  * 
  * 
+ * Username Database format
+ * [UserId][comma][Username - 8 bytes][LF - 1 byte]
+ * ..
+ * ..
+ * <EOF>
+ * 
+ * 
+ * Passwsord Database format 
+ * [UserId][comma][Password][LF - 1 Byte]
+ * ..
+ * ..
+ * <EOF>
+ * 
+ * Status Database Format
+ * [UserId][comma][1/0][LF -1 Byte]
+ * ..
+ * ..
+ * <EOF>
+ * 
+ * 
 
 */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <signal.h>
+
+//Defines
+#define MAX_USERS       128
+#define PORT "9034" // port we're listening on
+
+//GLobal Variables
+const char* username_file = "username.txt";
+const char* password_file = "passwd.txt";
+const char* status_file = "status.txt";
+
+/**
+ * @brief User context struct
+ * 
+ */
+typedef struct user_cntxt
+{
+    unsigned char userID;
+    unsigned char username[8];  //8 Bytes username
+    unsigned char password[8];  //8 byte password
+    unsigned char status; //0x00 Offline, 0x01 Online
+    unsigned char send_msg[128];
+    unsigned char rx_msg[128];
+}User_Context;
+
+
+/**
+ * @brief Server context struct
+ * 
+ */
+typedef struct Server_Context
+{
+    unsigned int no_of_active_connections;  /* No of Active Connections */
+
+    FILE* username;             /* File Pointer of Username file */
+    FILE* password;             /* File Pointer of Password File */
+    FILE* status;               /* File Pointer of Status File */
+
+    int listener;               /* Listener for new connetions */
+    struct addrinfo hints;      /* Some Server related structs */
+    struct addrinfo *ai; 
+    struct addrinfo *p; 
+
+    struct sockaddr_storage remoteaddr;     /* Client Connection related Variables*/
+    socklen_t addrlen;
+    char remoteIP[INET6_ADDRSTRLEN];
+    int newfd;
+
+
+
+}server_cnxt;
+
+
+/**
+ * @brief Get the server context object
+ * 
+ * @return server_cnxt* 
+ */
+server_cnxt* get_server_context()
+{
+    static server_cnxt chat_server;
+    return &chat_server;
+}
+
+int fopen_db_files()
+{
+    server_cnxt* init_server_context = get_server_context();
+    if(init_server_context != NULL)
+    {
+        //Add the File pointers
+        if((init_server_context->username = fopen(username_file,"a+")) != NULL &&
+            (init_server_context->password =fopen(password_file,"a+")) != NULL &&
+            (init_server_context->status = fopen(status_file,"a+")) != NULL
+        )
+        {
+            //File pointers are Ok
+            init_server_context->no_of_active_connections = 0;
+
+            return 0;
+        }
+    }
+    perror("fopen db files");
+    return -1;
+}
+
+int fclose_db_files()
+{
+    server_cnxt *free_Server_cnxt = get_server_context();
+    if (free_Server_cnxt != NULL)
+    {
+        if (fclose(free_Server_cnxt->username) == 0 &&
+            fclose(free_Server_cnxt->password) == 0 &&
+            fclose(free_Server_cnxt->status) == 0)
+        {
+            // Files closed
+            return 0;
+        }
+    }
+    perror("fclose db files");
+    return -1;
+}
+
+int init_database()
+{
+    
+    server_cnxt* init_context = get_server_context();
+    if(fopen_db_files() == -1)
+    {
+        return -1;
+    }
+
+    //Do the init here
+    if(init_context != NULL)
+    {
+        init_context->no_of_active_connections = 0;
+    }
+    if (fclose_db_files() == -1)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+
+int init_server()
+{
+    server_cnxt* init_context = get_server_context();
+
+    int rv;
+    int yes = 1; // for setsockopt() SO_REUSEADDR, below
+
+    // get us a socket and bind it
+    memset(&init_context->hints, 0, sizeof(init_context->hints));
+    init_context->hints.ai_family = AF_UNSPEC;
+    init_context->hints.ai_socktype = SOCK_STREAM;
+    init_context->hints.ai_flags = AI_PASSIVE;
+
+    if ((rv = getaddrinfo(NULL, PORT, &init_context->hints, &init_context->ai)) != 0) // fill up the structs
+    {
+        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+        return -1;
+    }
+
+    for (init_context->p = init_context->ai; init_context->p != NULL; init_context->p = init_context->p->ai_next)
+    {
+        init_context->listener = socket(init_context->p->ai_family, init_context->p->ai_socktype, init_context->p->ai_protocol); // Create the socket descriptor
+        if (init_context->listener < 0)
+        {
+            continue;
+        }
+        // lose the pesky "address already in use" error message
+        setsockopt(init_context->listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+        if (bind(init_context->listener, init_context->p->ai_addr, init_context->p->ai_addrlen) < 0)
+        {
+            close(init_context->listener);
+            continue;
+        }
+        break;
+
+        // if we got here, it means we didn't get bound
+        if (init_context->p == NULL)
+        {
+            fprintf(stderr, "selectserver: failed to bind\n");
+            return -1;
+        }
+
+        freeaddrinfo(init_context->ai); // all done with this  //This can have dangeorous effect on struct?
+    }
+    return 0;
+}
+
+/**
+ * @brief Get the in addr object
+ * 
+ * @param sa 
+ * @return * void* 
+ */
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET)
+    {
+        return &(((struct sockaddr_in *)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
+
+int server_listen()
+{
+    server_cnxt* listener_context = get_server_context();
+    // listen
+    if (listen(listener_context->listener, 10) == -1)
+    {
+        perror("listen");
+        return -1;
+    }
+    // main loop
+    for (;;)
+    {
+        // handle new connections
+        listener_context->addrlen = sizeof(listener_context->remoteaddr);
+        listener_context->newfd = accept(listener_context->listener,
+                       (struct sockaddr *)&listener_context->remoteaddr,
+                       &listener_context->addrlen);
+        if (listener_context->newfd == -1)
+        {
+            perror("accept");
+        }
+        else
+        {
+
+            printf("\t[+]selectserver: new connection from %s on "
+                   "socket %d\n",
+                   inet_ntop(listener_context->remoteaddr.ss_family,
+                             get_in_addr((struct sockaddr *)&listener_context->remoteaddr),
+                             listener_context->remoteIP, INET6_ADDRSTRLEN),
+                   listener_context->newfd);
+
+            listener_context->no_of_active_connections++;
+            
+            //Need to see if the connection is valid
+            //Check username in database, if already there, validate password
+            //If new username, add to database - update the 3 databases
+        }
+    }
+}
+
+
+/**
+ * @brief Main function
+ * 
+ * @return int 
+ */
+int main()
+{
+    printf("[+]Server Database Init..\n");
+    if(init_database()  == -1)
+    {
+        perror("Init Database Failed");
+        exit(1);
+    }
+
+    printf("[+]Server Sockets Init..\n");
+    if(init_server() == -1)
+    {
+        perror("Socket Init Failed");
+        exit(1);
+    }
+    printf("[+]Server Listening..\n");
+    if(server_listen() == -1)
+    {
+        perror("Server Listen Error");
+        exit(1);
+    }
+
+
+    printf("[-]Exiting Server\n");
+    return 0;
+}
