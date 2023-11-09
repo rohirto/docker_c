@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <signal.h>
 #include "app_debug.h"
+#include "app_socket.h"
 
 //defines
 #define SERVER_IP "127.0.0.1" // Replace with the server's IP address
@@ -225,6 +226,14 @@ int init_connection()
         config_packet[0] = CONFIG_PACKET;
         config_packet[1] = 8;  //Actual len
         memcpy(config_packet+2,client->cli_usr.username,8);
+        //Send the packet to server
+        int len = 10;
+        if(sendall(client->sockfd,config_packet,&len) == -1)
+        {
+            debugError("sendall");
+            return -1;
+        }
+
     }
 
     return 0;

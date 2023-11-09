@@ -73,6 +73,7 @@ void debugLog2(const char *format, ...)
     printf(" ==> ");
     printf(RESET_COLOR);
     vprintf(format, args);
+    fflush(stdout);
     va_end(args);
 }
 

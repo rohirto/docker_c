@@ -44,6 +44,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -59,6 +60,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include "app_debug.h"
+#include "app_socket.h"
 #include <event2/event.h>  //Used for asynchronous sync
 
 
@@ -68,9 +70,9 @@
 
 
 //GLobal Variables
-const char* username_file = "/workspaces/docker_c/c/build/username.txt";
-const char* password_file = "/workspaces/docker_c/c/build/passwd.txt";
-const char* status_file = "/workspaces/docker_c/c/build/status.txt";
+const char* username_file = "../db/username.txt";
+const char* password_file = "../db/passwd.txt";
+const char* status_file = "../db/status.txt";
 
 
 
@@ -86,6 +88,9 @@ typedef struct user_cntxt
     unsigned char status; //0x00 Offline, 0x01 Online
     unsigned char send_msg[128];
     unsigned char rx_msg[128];
+
+    int socket;
+    pthread_t threadID;
 }User_Context;
 
 
@@ -110,6 +115,14 @@ typedef struct Server_Context
     socklen_t addrlen;
     char remoteIP[INET6_ADDRSTRLEN];
     int newfd;
+
+    fd_set readset;             /* File Descriptor sets */
+    fd_set writeset;
+    fd_set exset;
+    fd_set master;
+    int maxfd;
+
+    pthread_t threadId[10];     /* Max 10 threads at a time */
 
 
 
@@ -185,14 +198,7 @@ int init_database()
     return 0;
 }
 
-int make_sock_nonblocking(int fd)
-{
-    if(fcntl(fd, F_SETFL, O_NONBLOCK) != 0)
-    {
-        debugError("fcntl");
-    }
-    return 0;
-}
+
 
 int init_server()
 {
@@ -220,6 +226,13 @@ int init_server()
         {
             continue;
         }
+
+        //Set listener as nonblocking
+        if(make_sock_nonblocking(init_context->listener) ==  -1)
+        {
+            debugError("listner nonblocks");
+            return -1;
+        }
         // lose the pesky "address already in use" error message
         setsockopt(init_context->listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
@@ -238,6 +251,8 @@ int init_server()
         }
 
         freeaddrinfo(init_context->ai); // all done with this  //This can have dangeorous effect on struct?
+
+
     }
     return 0;
 }
@@ -257,42 +272,140 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+void* client_handle(void* arg)
+{
+    server_cnxt* server_context = get_server_context();
+    User_Context *client = (User_Context*) arg;
+
+    debugLog2("%s","Created a new Client thread\n");
+    while(1)
+    {
+        if(FD_ISSET(client->socket,&server_context->readset))
+        {
+            fprintfGreen(stdout,"reached till here");
+            break;
+        }
+        if(FD_ISSET(client->socket,&server_context->writeset))
+        {
+
+        }
+        if(FD_ISSET(client->socket,&server_context->exset))
+        {
+
+        }
+    }
+
+
+    return NULL;
+
+
+
+}
+
 int server_listen()
 {
     server_cnxt* listener_context = get_server_context();
+    int i = 0;  //Iterator for thread
     // listen
     if (listen(listener_context->listener, 10) == -1)
     {
         debugError("listen");
         return -1;
     }
+
+    FD_ZERO(&listener_context->master);
+    FD_ZERO(&listener_context->readset);
+    FD_ZERO(&listener_context->writeset);
+    FD_ZERO(&listener_context->exset);
+
+    FD_SET(listener_context->listener, &listener_context->master);
+    listener_context->maxfd = listener_context->listener;
+
     // main loop
     for (;;)
     {
-        // handle new connections
-        listener_context->addrlen = sizeof(listener_context->remoteaddr);
-        listener_context->newfd = accept(listener_context->listener,
-                       (struct sockaddr *)&listener_context->remoteaddr,
-                       &listener_context->addrlen);
-        if (listener_context->newfd == -1)
+        
+        listener_context->readset = listener_context->master;
+        listener_context->writeset = listener_context->master;
+        listener_context->exset = listener_context->master;
+
+        
+
+        //Select 
+        if(select((listener_context->maxfd ) + 1, &listener_context->readset,&listener_context->writeset,
+        &listener_context->exset, NULL) == -1)
         {
-            debugError("accept");
+            debugError("select");
+            return -1;
         }
-        else
+
+        // handle new connections
+        if (FD_ISSET(listener_context->listener, &listener_context->readset))
         {
-            debugLog2("selectserver: new connection from %s on "
-                   "socket %d\n",
-                   inet_ntop(listener_context->remoteaddr.ss_family,
-                             get_in_addr((struct sockaddr *)&listener_context->remoteaddr),
-                             listener_context->remoteIP, INET6_ADDRSTRLEN),
-                   listener_context->newfd);
+            listener_context->addrlen = sizeof(listener_context->remoteaddr);
+            listener_context->newfd = accept(listener_context->listener,
+                                             (struct sockaddr *)&listener_context->remoteaddr,
+                                             &listener_context->addrlen);
 
-            listener_context->no_of_active_connections++;
-            
-            //Need to see if the connection is valid
-            //Check username in database, if already there, validate password
-            //If new username, add to database - update the 3 databases
+            if (listener_context->newfd == -1)
+            {
+                debugError("accept");
+            }
+            else
+            {
+                debugLog2("selectserver: new connection from %s on "
+                          "socket %d\n",
+                          inet_ntop(listener_context->remoteaddr.ss_family,
+                                    get_in_addr((struct sockaddr *)&listener_context->remoteaddr),
+                                    listener_context->remoteIP, INET6_ADDRSTRLEN),
+                          listener_context->newfd);
 
+                listener_context->no_of_active_connections++;
+
+                //Make the new socket nonblocking
+                if(make_sock_nonblocking(listener_context->newfd) == -1)
+                {
+                    debugError("sock nonblocking");
+                    continue;
+                }
+
+                // Need to see if the connection is valid
+                // Check username in database, if already there, validate password
+                // If new username, add to database - update the 3 databases
+
+                //Add to FD SET
+                FD_SET(listener_context->newfd,&listener_context->master);
+                if(listener_context->newfd > listener_context->maxfd)
+                {
+                    listener_context->maxfd = listener_context->newfd;
+                }
+
+                User_Context *new_client = malloc(sizeof(User_Context));
+                if(new_client == NULL )
+                {
+                    debugError("malloc");
+                    continue;
+                }
+                new_client->socket = listener_context->newfd;
+                //After this will need some synchronization mechanisms
+                debugLog2("%s%d\n","Creating a new thread for socket ",listener_context->newfd);
+                if(pthread_create(&listener_context->threadId[i++],NULL, &client_handle, (void* )new_client) !=0)
+                {
+                    debugError("ThreadCreationError ");
+                    close(listener_context->newfd);
+                    free(new_client);
+                    continue;
+                }
+
+                // Detach the thread so it can clean up automatically
+                pthread_detach(listener_context->threadId[i]);
+
+                if(i > 10)
+                {
+                    i = 0;
+                }
+
+            }
         }
     }
 }

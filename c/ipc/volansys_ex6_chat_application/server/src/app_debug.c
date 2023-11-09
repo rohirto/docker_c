@@ -39,6 +39,7 @@ void debugLog1_constr(const char *format, ...)
     printf("[+] ");
     printf(RESET_COLOR);
     vprintf(format, args);
+    fflush(stdout);
     va_end(args);
 }
 /**
@@ -55,6 +56,7 @@ void debugLog1_destr(const char *format, ...)
     printf("[-] ");
     printf(RESET_COLOR);
     vprintf(format, args);
+    fflush(stdout);
     va_end(args);
 }
 
@@ -73,6 +75,7 @@ void debugLog2(const char *format, ...)
     printf(" ==> ");
     printf(RESET_COLOR);
     vprintf(format, args);
+    fflush(stdout);
     va_end(args);
 }
 
@@ -90,6 +93,7 @@ void fprintfBlue(FILE *file, const char *format, ...)
     fprintf(file,BLUE_COLOR" ==> ");
     vfprintf(file,format,args);
     fprintf(file,RESET_COLOR);
+    fflush(file);
     va_end(args);
 }
 
@@ -100,6 +104,7 @@ void fprintfRed(FILE *file, const char *format, ...)
     fprintf(file,RED_COLOR" ==> ");
     vfprintf(file,format,args);
     fprintf(file,RESET_COLOR);
+    fflush(file);
     va_end(args);
 }
 
@@ -110,6 +115,7 @@ void fprintfGreen(FILE *file, const char *format, ...)
     fprintf(file,GREEN_COLOR" ==> ");
     vfprintf(file,format,args);
     fprintf(file,RESET_COLOR);
+    fflush(file);
     va_end(args);
 }
 
