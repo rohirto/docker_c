@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     git \
     valgrind \
     cppcheck \
-     libncurses-dev \
+    libncurses-dev \
+    libevent-dev\
     && rm -rf /var/lib/apt/lists/*
 
 # Install required dependencies
