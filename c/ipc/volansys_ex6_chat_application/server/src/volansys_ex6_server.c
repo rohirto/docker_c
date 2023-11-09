@@ -15,6 +15,8 @@
  * Before starting the above exercise, please prepare a document which would include top level architecture (flow chart containing function names) 
  * on how are you planning to implement the solution and get approval from the Mentor on the same.
  * 
+ * Will be going with Event Driven Approach, which is Asynchronous as opposed to earlier Synchronous approach (Select functions)
+ * 
  * 
  * Username Database format
  * [UserId][comma][Username - 8 bytes][LF - 1 byte]
@@ -55,15 +57,22 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdarg.h>
+#include "app_debug.h"
+#include <event2/event.h>  //Used for asynchronous sync
+
 
 //Defines
 #define MAX_USERS       128
 #define PORT "9034" // port we're listening on
 
+
 //GLobal Variables
-const char* username_file = "username.txt";
-const char* password_file = "passwd.txt";
-const char* status_file = "status.txt";
+const char* username_file = "/workspaces/docker_c/c/build/username.txt";
+const char* password_file = "/workspaces/docker_c/c/build/passwd.txt";
+const char* status_file = "/workspaces/docker_c/c/build/status.txt";
+
+
 
 /**
  * @brief User context struct
@@ -106,7 +115,6 @@ typedef struct Server_Context
 
 }server_cnxt;
 
-
 /**
  * @brief Get the server context object
  * 
@@ -135,7 +143,7 @@ int fopen_db_files()
             return 0;
         }
     }
-    perror("fopen db files");
+    debugError("fopen db files");
     return -1;
 }
 
@@ -152,7 +160,7 @@ int fclose_db_files()
             return 0;
         }
     }
-    perror("fclose db files");
+    debugError("fclose db files");
     return -1;
 }
 
@@ -193,8 +201,8 @@ int init_server()
 
     if ((rv = getaddrinfo(NULL, PORT, &init_context->hints, &init_context->ai)) != 0) // fill up the structs
     {
-        fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
-        return -1;
+        fprintfRed(stderr, "selectserver: %s\n", gai_strerror(rv));
+        return -1; 
     }
 
     for (init_context->p = init_context->ai; init_context->p != NULL; init_context->p = init_context->p->ai_next)
@@ -217,7 +225,7 @@ int init_server()
         // if we got here, it means we didn't get bound
         if (init_context->p == NULL)
         {
-            fprintf(stderr, "selectserver: failed to bind\n");
+            fprintfRed(stderr, "selectserver: failed to bind\n");
             return -1;
         }
 
@@ -247,7 +255,7 @@ int server_listen()
     // listen
     if (listen(listener_context->listener, 10) == -1)
     {
-        perror("listen");
+        debugError("listen");
         return -1;
     }
     // main loop
@@ -260,12 +268,11 @@ int server_listen()
                        &listener_context->addrlen);
         if (listener_context->newfd == -1)
         {
-            perror("accept");
+            debugError("accept");
         }
         else
         {
-
-            printf("\t[+]selectserver: new connection from %s on "
+            debugLog2("selectserver: new connection from %s on "
                    "socket %d\n",
                    inet_ntop(listener_context->remoteaddr.ss_family,
                              get_in_addr((struct sockaddr *)&listener_context->remoteaddr),
@@ -277,6 +284,7 @@ int server_listen()
             //Need to see if the connection is valid
             //Check username in database, if already there, validate password
             //If new username, add to database - update the 3 databases
+
         }
     }
 }
@@ -289,27 +297,27 @@ int server_listen()
  */
 int main()
 {
-    printf("[+]Server Database Init..\n");
+    debugLog1_constr("%s","Server Database Init.. \n");
     if(init_database()  == -1)
     {
-        perror("Init Database Failed");
+        debugError("Init Database Failed");
         exit(1);
     }
 
-    printf("[+]Server Sockets Init..\n");
+    debugLog1_constr("%s","Server Sockets Init..\n");
     if(init_server() == -1)
     {
-        perror("Socket Init Failed");
+        debugError("Socket Init Failed");
         exit(1);
     }
-    printf("[+]Server Listening..\n");
+    debugLog1_constr("%s","Server Listening..\n");
     if(server_listen() == -1)
     {
-        perror("Server Listen Error");
+        debugError("Server Listen Error");
         exit(1);
     }
 
 
-    printf("[-]Exiting Server\n");
+    debugLog1_constr("%s","Exiting Server\n");
     return 0;
 }
