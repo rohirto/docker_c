@@ -185,6 +185,14 @@ int init_database()
     return 0;
 }
 
+int make_sock_nonblocking(int fd)
+{
+    if(fcntl(fd, F_SETFL, O_NONBLOCK) != 0)
+    {
+        debugError("fcntl");
+    }
+    return 0;
+}
 
 int init_server()
 {

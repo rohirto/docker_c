@@ -16,7 +16,8 @@
         "string.h": "c",
         "typeinfo": "c",
         "endian.h": "c",
-        "event.h": "c"
+        "event.h": "c",
+        "app_debug.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

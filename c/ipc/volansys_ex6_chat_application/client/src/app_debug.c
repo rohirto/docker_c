@@ -87,8 +87,9 @@ void fprintfBlue(FILE *file, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    fprintf(file,BLUE_COLOR" ==> " RESET_COLOR);
+    fprintf(file,BLUE_COLOR" ==> ");
     vfprintf(file,format,args);
+    fprintf(file,RESET_COLOR);
     va_end(args);
 }
 
@@ -96,8 +97,9 @@ void fprintfRed(FILE *file, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    fprintf(file,RED_COLOR" ==> " RESET_COLOR);
+    fprintf(file,RED_COLOR" ==> ");
     vfprintf(file,format,args);
+    fprintf(file,RESET_COLOR);
     va_end(args);
 }
 
@@ -105,8 +107,9 @@ void fprintfGreen(FILE *file, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    fprintf(file,GREEN_COLOR" ==> " RESET_COLOR);
+    fprintf(file,GREEN_COLOR" ==> ");
     vfprintf(file,format,args);
+    fprintf(file,RESET_COLOR);
     va_end(args);
 }
 

@@ -1,4 +1,6 @@
 # Server Implementation
+Will be using Async Implementation method for the application - libevent
+Reference for LibEvent 2.0 - [https://libevent.org/libevent-book/]
 ## Initialization of Server 
 1. Load the Dynamic Database - The dynamic database contains following parameters - Past Client Data [Username, Password, Chats with other users]
     a. First time creation of data base -

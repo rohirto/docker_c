@@ -128,7 +128,7 @@ int init_client()
 
         if ((rv = getaddrinfo(SERVER_IP, SERVER_PORT, &init_cli_context->hints, &init_cli_context->servinfo)) != 0) // Fill up our structs using getaddrinfo function
         {
-            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+            fprintfRed(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
             return -1;
         }
 
@@ -138,29 +138,29 @@ int init_client()
             if ((init_cli_context->sockfd = socket(init_cli_context->p->ai_family, init_cli_context->p->ai_socktype, // Get descriptor
                                  init_cli_context->p->ai_protocol)) == -1)
             {
-                perror("client: socket");
+                debugError("client: socket");
                 continue;
             }
             if (connect(init_cli_context->sockfd, init_cli_context->p->ai_addr, init_cli_context->p->ai_addrlen) == -1) // Connect to the nodes in linked list, ipv4 or ipv6
             {
                 close(init_cli_context->sockfd);
-                perror("client: connect");
+                debugError("client: connect");
                 continue;
             }
             break;
         }
         if (init_cli_context->p == NULL)
         {
-            fprintf(stderr, "client: failed to connect\n");
+            fprintfRed(stderr, "client: failed to connect\n");
             return -1;
         }
 
         inet_ntop(init_cli_context->p->ai_family, get_in_addr((struct sockaddr *)init_cli_context->p->ai_addr),
                   init_cli_context->s, sizeof(init_cli_context->s));
-        printf("\t[+]client: connecting to %s\n", init_cli_context->s);
+        debugLog2("client: connecting to %s\n", init_cli_context->s);
         freeaddrinfo(init_cli_context->servinfo); // all done with this structure
 
-        printf("\t[+]Connected to the server.\n");
+        debugLog2("Connected to the server.\n");
     }
     return 0;
 }
@@ -173,10 +173,10 @@ int init_client()
 int get_usrname_passwd()
 {
     client_cnxt* username_passwd_context = get_client_context();
-    unsigned char input[9];  //8 bytes + 1 null terminator
+    unsigned char input[128];  //8 bytes + 1 null terminator
     while (1) 
     {
-        printf("\t[*]Enter Username: ");
+        fprintfBlue(stdout, "Enter Username: ");
         if (fgets((char*)input, sizeof(input), stdin)) 
         {
             size_t len = strlen((char*)input);
@@ -189,7 +189,7 @@ int get_usrname_passwd()
 
             if (len > 8) 
             {
-                printf("\t[-]Username is too long. Please enter up to 8 characters.\n");
+                fprintfRed(stdout,"Username is too long. Please enter up to 8 characters.\n");
             } 
             else if (len < 8) 
             {
@@ -205,7 +205,7 @@ int get_usrname_passwd()
         else
         {
             // Handle input error
-            fprintf(stderr,"Error reading input.\n");
+            fprintfRed(stderr,"Error reading input.\n");
             return -1;
         }
     }
