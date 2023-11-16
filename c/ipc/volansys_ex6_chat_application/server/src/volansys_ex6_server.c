@@ -61,12 +61,17 @@
 #include <stdarg.h>
 #include "app_debug.h"
 #include "app_socket.h"
+#include "app_event.h"
 #include <event2/event.h>  //Used for asynchronous sync
 
+//Customizations
+#define USE_SELECT  0
+#define USE_THREADS 1
 
 //Defines
 #define MAX_USERS       128
 #define PORT "9034" // port we're listening on
+
 
 
 //GLobal Variables
@@ -74,24 +79,11 @@ const char* username_file = "../db/username.txt";
 const char* password_file = "../db/passwd.txt";
 const char* status_file = "../db/status.txt";
 
+#if USE_THREADS
+#define THREAD_POOL_SIZE    20
+pthread_t thread_pool[THREAD_POOL_SIZE];
+#endif
 
-
-/**
- * @brief User context struct
- * 
- */
-typedef struct user_cntxt
-{
-    unsigned char userID;
-    unsigned char username[8];  //8 Bytes username
-    unsigned char password[8];  //8 byte password
-    unsigned char status; //0x00 Offline, 0x01 Online
-    unsigned char send_msg[128];
-    unsigned char rx_msg[128];
-
-    int socket;
-    pthread_t threadID;
-}User_Context;
 
 
 /**
@@ -207,6 +199,14 @@ int init_server()
     int rv;
     int yes = 1; // for setsockopt() SO_REUSEADDR, below
 
+#if USE_THREADS
+    //Createa bunch of threads which wde are going to reuse 
+    for(int i = 0; i < THREAD_POOL_SIZE; i++)
+    {
+        pthread_create(&thread_pool[i],NULL,client_handle, NULL);
+    }
+#endif
+
     // get us a socket and bind it
     memset(&init_context->hints, 0, sizeof(init_context->hints));
     init_context->hints.ai_family = AF_UNSPEC;
@@ -226,13 +226,14 @@ int init_server()
         {
             continue;
         }
-
+#if USE_SELECT
         //Set listener as nonblocking
         if(make_sock_nonblocking(init_context->listener) ==  -1)
         {
             debugError("listner nonblocks");
             return -1;
         }
+#endif
         // lose the pesky "address already in use" error message
         setsockopt(init_context->listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
@@ -276,23 +277,51 @@ void* client_handle(void* arg)
 {
     server_cnxt* server_context = get_server_context();
     User_Context *client = (User_Context*) arg;
+    EventType event;
+    // Set up event handlers
+    EventHandler eventHandler = 
+    {
+        .onRead = onReadHandler,
+        .onWrite = onWriteHandler,
+        .onException = onExceptionHandler
+    };
+
 
     debugLog2("%s","Created a new Client thread\n");
     while(1)
     {
+
+
+        //Visualizing this loop as a polling agent,which will be used to call our event dispatcher
         if(FD_ISSET(client->socket,&server_context->readset))
         {
-            fprintfGreen(stdout,"reached till here");
-            break;
+            int bytesRead;
+            event = READ_EVENT;
+            if ((bytesRead = recv(client->socket, client->rx_msg, 1, 0)) == -1)
+            {
+                debugError("Socket error\n");
+                FD_CLR(client->socket,&server_context->master);
+            }
+            else if(bytesRead == 0)
+            {
+                FD_CLR(client->socket,&server_context->master);
+                close(client->socket);
+            }
+            else 
+            {
+                dispatchEvent(client, event, &eventHandler);
+            }
+            
         }
         if(FD_ISSET(client->socket,&server_context->writeset))
         {
-
+            event = WRITE_EVENT;
         }
         if(FD_ISSET(client->socket,&server_context->exset))
         {
-
+            event = EXCEPTION_EVENT;
         }
+
     }
 
 
@@ -312,7 +341,7 @@ int server_listen()
         debugError("listen");
         return -1;
     }
-
+#if USE_SELECT
     FD_ZERO(&listener_context->master);
     FD_ZERO(&listener_context->readset);
     FD_ZERO(&listener_context->writeset);
@@ -320,11 +349,12 @@ int server_listen()
 
     FD_SET(listener_context->listener, &listener_context->master);
     listener_context->maxfd = listener_context->listener;
+#endif
 
     // main loop
     for (;;)
     {
-        
+#if USE_SELECT
         listener_context->readset = listener_context->master;
         listener_context->writeset = listener_context->master;
         listener_context->exset = listener_context->master;
@@ -342,6 +372,7 @@ int server_listen()
         // handle new connections
         if (FD_ISSET(listener_context->listener, &listener_context->readset))
         {
+#endif
             listener_context->addrlen = sizeof(listener_context->remoteaddr);
             listener_context->newfd = accept(listener_context->listener,
                                              (struct sockaddr *)&listener_context->remoteaddr,
@@ -362,24 +393,26 @@ int server_listen()
 
                 listener_context->no_of_active_connections++;
 
+#if USE_SELECT
                 //Make the new socket nonblocking
                 if(make_sock_nonblocking(listener_context->newfd) == -1)
                 {
                     debugError("sock nonblocking");
                     continue;
                 }
+#endif
 
                 // Need to see if the connection is valid
                 // Check username in database, if already there, validate password
                 // If new username, add to database - update the 3 databases
-
+#if USE_SELECT
                 //Add to FD SET
                 FD_SET(listener_context->newfd,&listener_context->master);
                 if(listener_context->newfd > listener_context->maxfd)
                 {
                     listener_context->maxfd = listener_context->newfd;
                 }
-
+#endif
                 User_Context *new_client = malloc(sizeof(User_Context));
                 if(new_client == NULL )
                 {
@@ -406,7 +439,9 @@ int server_listen()
                 }
 
             }
+#if USE_SELECT
         }
+#endif
     }
 }
 
