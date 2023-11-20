@@ -18,24 +18,7 @@
  * Will be going with Event Driven Approach, which is Asynchronous as opposed to earlier Synchronous approach (Select functions)
  * 
  * 
- * Username Database format
- * [UserId][comma][Username - 8 bytes][LF - 1 byte]
- * ..
- * ..
- * <EOF>
- * 
- * 
- * Passwsord Database format 
- * [UserId][comma][Password][LF - 1 Byte]
- * ..
- * ..
- * <EOF>
- * 
- * Status Database Format
- * [UserId][comma][1/0][LF -1 Byte]
- * ..
- * ..
- * <EOF>
+
  * 
  * 
 
@@ -63,111 +46,30 @@
 #include "app_socket.h"
 #include "app_event.h"
 #include <event2/event.h>  //Used for asynchronous sync
-
-//Customizations
-#define USE_SELECT  0
-#define USE_THREADS 1
-
-//Defines
-#define MAX_USERS       128
-#define PORT "9034" // port we're listening on
+#include "app_queue.h"
+#include "app_config.h"
+#include "app_db.h"
 
 
 
-//GLobal Variables
-const char* username_file = "../db/username.txt";
-const char* password_file = "../db/passwd.txt";
-const char* status_file = "../db/status.txt";
+
+
+
+
+// //GLobal Variables
+// const char* username_file = "../db/username.txt";
+// const char* password_file = "../db/passwd.txt";
+// const char* status_file = "../db/status.txt";
+
+//Function Prototypes
+void *thread_function(void*);
 
 #if USE_THREADS
-#define THREAD_POOL_SIZE    20
-pthread_t thread_pool[THREAD_POOL_SIZE];
+//Sync Variables
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;
 #endif
-
-
-
-/**
- * @brief Server context struct
- * 
- */
-typedef struct Server_Context
-{
-    unsigned int no_of_active_connections;  /* No of Active Connections */
-
-    FILE* username;             /* File Pointer of Username file */
-    FILE* password;             /* File Pointer of Password File */
-    FILE* status;               /* File Pointer of Status File */
-
-    int listener;               /* Listener for new connetions */
-    struct addrinfo hints;      /* Some Server related structs */
-    struct addrinfo *ai; 
-    struct addrinfo *p; 
-
-    struct sockaddr_storage remoteaddr;     /* Client Connection related Variables*/
-    socklen_t addrlen;
-    char remoteIP[INET6_ADDRSTRLEN];
-    int newfd;
-
-    fd_set readset;             /* File Descriptor sets */
-    fd_set writeset;
-    fd_set exset;
-    fd_set master;
-    int maxfd;
-
-    pthread_t threadId[10];     /* Max 10 threads at a time */
-
-
-
-}server_cnxt;
-
-/**
- * @brief Get the server context object
- * 
- * @return server_cnxt* 
- */
-server_cnxt* get_server_context()
-{
-    static server_cnxt chat_server;
-    return &chat_server;
-}
-
-int fopen_db_files()
-{
-    server_cnxt* init_server_context = get_server_context();
-    if(init_server_context != NULL)
-    {
-        //Add the File pointers
-        if((init_server_context->username = fopen(username_file,"a+")) != NULL &&
-            (init_server_context->password =fopen(password_file,"a+")) != NULL &&
-            (init_server_context->status = fopen(status_file,"a+")) != NULL
-        )
-        {
-            //File pointers are Ok
-            init_server_context->no_of_active_connections = 0;
-
-            return 0;
-        }
-    }
-    debugError("fopen db files");
-    return -1;
-}
-
-int fclose_db_files()
-{
-    server_cnxt *free_Server_cnxt = get_server_context();
-    if (free_Server_cnxt != NULL)
-    {
-        if (fclose(free_Server_cnxt->username) == 0 &&
-            fclose(free_Server_cnxt->password) == 0 &&
-            fclose(free_Server_cnxt->status) == 0)
-        {
-            // Files closed
-            return 0;
-        }
-    }
-    debugError("fclose db files");
-    return -1;
-}
 
 int init_database()
 {
@@ -201,9 +103,10 @@ int init_server()
 
 #if USE_THREADS
     //Createa bunch of threads which wde are going to reuse 
+    debugLog2("%s\n","Creating a new threads to handle sockets ");
     for(int i = 0; i < THREAD_POOL_SIZE; i++)
     {
-        pthread_create(&thread_pool[i],NULL,client_handle, NULL);
+        pthread_create(&init_context->thread_pool[i],NULL,thread_function, NULL);
     }
 #endif
 
@@ -277,6 +180,8 @@ void* client_handle(void* arg)
 {
     server_cnxt* server_context = get_server_context();
     User_Context *client = (User_Context*) arg;
+    free(arg);
+    client->send_flag = 0;
     EventType event;
     // Set up event handlers
     EventHandler eventHandler = 
@@ -286,44 +191,130 @@ void* client_handle(void* arg)
         .onException = onExceptionHandler
     };
 
+#if USE_SELECT
+    fd_set c_master;                      // master file descriptor list
+    fd_set c_read_fds;                    // temp file descriptor list for select()
+    fd_set c_write_fds;
+    int c_fdmax;
 
-    debugLog2("%s","Created a new Client thread\n");
+    //Initialize FDs
+    // Initialize file descriptor sets
+    FD_ZERO(&c_master); // clear the master and temp sets
+    FD_ZERO(&c_read_fds);
+    FD_ZERO(&c_write_fds);
+
+    FD_SET(client->socket, &c_master);
+    // keep track of the biggest file descriptor
+    c_fdmax = client->socket; // so far, it's this one
+ #endif
+
+    debugLog2("%s", "Created a new Client thread\n");
+
+    // receive Username
+    unsigned char c, buffer[128];
+    if (recv(client->socket, &c, 1, 0) == -1)
+    {
+        debugError("Socket error\n");
+    }
+
+    unsigned char len;
+    if (recv(client->socket, &len, 1, 0) == -1)
+    {
+        debugError("Socket error\n");
+    }
+    recv(client->socket, buffer, len, 0);
+    memset(client->username, 0x00, 8);
+    memcpy(client->username, buffer, len);
+    debugLog1_constr("Username: %s\n", client->username);
+    if ((client->userID = username_handling(client->username)) == -1)
+    {
+        debugError("config packet");
+    }
+    else
+    {
+        // set the username to online
+        client->status = ONLINE;
+        if (status_handling(client->userID, client->status) == -1)
+        {
+            debugError("config packet");
+        }
+        else
+        {
+            // Send the list to client
+            if (send_username(client->socket, client->userID) == -1)
+            {
+                debugError("write");
+            }
+        }
+    }
     while(1)
     {
+#if USE_SELECT
+        c_read_fds = c_master;                                              // copy it, need to keep a safe copy of master fds
+        c_write_fds = c_master;  
 
+        // Use select to wait for activity on descriptors
+        if (select(c_fdmax + 1, &c_read_fds, &c_write_fds, NULL, NULL) == -1) 
+        {
 
+            debugError("select");
+            continue;
+        }
+
+        // run through the existing connections looking for data to read
         //Visualizing this loop as a polling agent,which will be used to call our event dispatcher
-        if(FD_ISSET(client->socket,&server_context->readset))
+        if (FD_ISSET(client->socket, &c_read_fds))
         {
             int bytesRead;
             event = READ_EVENT;
-            if ((bytesRead = recv(client->socket, client->rx_msg, 1, 0)) == -1)
+            if ((bytesRead = recv(client->socket, client->rx_msg, 1, MSG_PEEK)) == -1)
             {
                 debugError("Socket error\n");
-                FD_CLR(client->socket,&server_context->master);
+                FD_CLR(client->socket,&c_master);
             }
             else if(bytesRead == 0)
             {
-                FD_CLR(client->socket,&server_context->master);
+                FD_CLR(client->socket, &c_master);
                 close(client->socket);
+                // set the username to offline
+                client->status = OFFLINE;
+                if (status_handling(client->userID, client->status) == -1)
+                {
+                    debugError("status update\n");
+                }
+                debugLog1_destr("Closed Connection on %d\n",client->socket);
             }
             else 
             {
                 dispatchEvent(client, event, &eventHandler);
             }
-            
+
         }
-        if(FD_ISSET(client->socket,&server_context->writeset))
+        if (FD_ISSET(client->socket, &c_write_fds))
         {
-            event = WRITE_EVENT;
-        }
-        if(FD_ISSET(client->socket,&server_context->exset))
-        {
-            event = EXCEPTION_EVENT;
+            if(client->status == ONLINE && client->send_flag == 1)
+            {
+                event = WRITE_EVENT;
+                dispatchEvent(client, event, &eventHandler);
+
+            }
         }
 
+#endif
+        pthread_mutex_lock(&c_mutex);
+        if (check_connection(client->socket) == -1)
+        {
+            close(client->socket);
+            // set the username to offline
+            client->status = OFFLINE;
+            if (status_handling(client->userID, client->status) == -1)
+            {
+                debugError("status update\n");
+            }
+            debugLog1_destr("Closed Connection on %d\n", client->socket);
+        }
+        pthread_mutex_unlock(&c_mutex);
     }
-
 
     return NULL;
 
@@ -413,6 +404,13 @@ int server_listen()
                     listener_context->maxfd = listener_context->newfd;
                 }
 #endif
+#if USE_THREADS
+//Make the new socket nonblocking
+                // if(make_sock_nonblocking(listener_context->newfd) == -1)
+                // {
+                //     debugError("sock nonblocking");
+                //     continue;
+                // }
                 User_Context *new_client = malloc(sizeof(User_Context));
                 if(new_client == NULL )
                 {
@@ -421,22 +419,12 @@ int server_listen()
                 }
                 new_client->socket = listener_context->newfd;
                 //After this will need some synchronization mechanisms
-                debugLog2("%s%d\n","Creating a new thread for socket ",listener_context->newfd);
-                if(pthread_create(&listener_context->threadId[i++],NULL, &client_handle, (void* )new_client) !=0)
-                {
-                    debugError("ThreadCreationError ");
-                    close(listener_context->newfd);
-                    free(new_client);
-                    continue;
-                }
-
-                // Detach the thread so it can clean up automatically
-                pthread_detach(listener_context->threadId[i]);
-
-                if(i > 10)
-                {
-                    i = 0;
-                }
+                pthread_mutex_lock(&mutex);
+                enqueue(new_client);
+                pthread_cond_signal(&condition_var);
+                pthread_mutex_unlock(&mutex);
+               
+#endif
 
             }
 #if USE_SELECT
@@ -444,6 +432,33 @@ int server_listen()
 #endif
     }
 }
+
+#if USE_THREADS
+void *thread_function(void* arg)
+{
+    //Thread Function
+    while (1)
+    {
+        User_Context *pclient;
+        pthread_mutex_lock(&mutex);
+        if((pclient = dequeue()) == NULL)
+        {
+            pthread_cond_wait(&condition_var, &mutex);
+            //Try again
+            pclient = dequeue();
+        }
+        pthread_mutex_unlock(&mutex);
+        if(pclient != NULL)
+        {
+            //We have a new connection handle it acc
+            client_handle(pclient);
+
+
+        }
+    }
+    
+}
+#endif
 
 
 /**
