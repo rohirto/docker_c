@@ -11,6 +11,8 @@
 #ifndef APP_DEBUG_H
 #define APP_DEBUG_H
 
+#include <stdio.h>
+
 //Function Prototypes
 void debugLog1_constr(const char *format, ...); 
 void debugLog1_destr(const char *format, ...);
