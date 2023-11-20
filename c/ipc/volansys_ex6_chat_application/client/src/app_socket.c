@@ -50,6 +50,35 @@ int sendall(int s, unsigned char *buf, int *len)
 }
 
 /**
+ * @brief receive all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be rx
+ * @param int* len - len to be rx, also how many bytes were actually rx is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+*/
+int recvall(int s, void *buf, int *len)
+{
+    unsigned char* buff = (unsigned char*) buf;
+    int total = 0;        // how many bytes we've received
+    int bytesleft = *len; // how many bytes we have left to receive
+    int n = 0;
+    while (total < *len)
+    {
+        n = recv(s, buff + total, bytesleft, 0);
+        if (n == -1)
+        {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    *len = total;            // return the number actually received here
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
+/**
  * @brief Make the socket Non Blocking, to acheive async functionality
  * 
  * @param fd file descriptor of socket

@@ -14,5 +14,6 @@
 
 int sendall(int , unsigned char *, int *);
 int make_sock_nonblocking(int fd);
+int recvall(int , void *, int *);
 
 #endif
