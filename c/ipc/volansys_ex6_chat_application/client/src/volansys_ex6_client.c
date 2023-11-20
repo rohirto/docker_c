@@ -241,6 +241,109 @@ int init_connection()
 
 }
 
+int client_hanlde()
+{
+    client_cnxt* client = get_client_context();
+    fd_set master;                      // master file descriptor list
+    fd_set read_fds;                    // temp file descriptor list for select()
+    fd_set write_fds;
+    int fdmax;                          // maximum file descriptor number
+    int fd = fileno(stdin);
+    int rv;
+
+    //Macros for select()
+    FD_ZERO(&master); // clear the master and temp sets
+    FD_ZERO(&read_fds);
+    FD_ZERO(&write_fds);
+
+
+    //Load the file descriptors into master list
+    FD_SET(client->sockfd, &master);  //Socket descriptor
+    FD_SET(fd, &master);      //stdin descriptor
+    if(client->sockfd > fd)         //Check which one is fdmax
+    {
+        fdmax = client->sockfd;
+    }
+    else
+    {
+        fdmax = fd;
+    }
+    //User Interaction
+    fprintfBlue(stdout,"******* USER NAMES ******************\n");
+    while(1)
+    {
+        read_fds = master;  //Save a copy of master
+        write_fds = master; ////Save a copy of master
+
+        if (select(fdmax + 1, &read_fds, &write_fds, NULL, NULL) == -1)   //we will need both read and write functions
+        {
+            debugError("select");
+            exit(EXIT_FAILURE);
+        }
+        // run through the existing connections looking for data to read
+        for (int i = 0; i <= fdmax; i++)
+        {
+            if (FD_ISSET(i, &read_fds)) // If any of the read_fds is set
+            {
+
+                if (i == client->sockfd) // If receive on socketfd
+                {
+                    int status;
+                    unsigned char len, packet_type;
+
+                    if ((status = recv(i, &packet_type, 1, 0)) == -1) // first byte of packet is packet type, this is our header
+                    {
+                        // Error
+                        debugError("recv");
+                        return -1;
+                    }
+                    else if (status == 0)
+                    {
+                        debugLog1_destr("selectserver: socket %d hung up\n", i);
+                        close(i);           // bye!
+                        FD_CLR(i, &master); // remove from master set
+                        return -1;
+                    }
+                    switch (packet_type)
+                    {
+                        case CONFIG_PACKET:
+                            //List of Username incoming
+                            len = recv(i, &len, 1, 0);
+                            unsigned char buffer[1024], username[9];
+                            int userID;
+                            int intPacketLen = (int)len;                 // Cast unsigned char to int
+                            if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
+                            {
+                                // Error
+                                perror("recv_all");
+                                return -1;
+                            }
+                            unpack(buffer,"h128s", &userID, username);
+                            fprintfGreen(stdout,"%d.%s",userID, username);
+                            break;
+                        case MESSAGE_PACKET:
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else if(i == fd)  //stdin, every time if something is available on stdin
+                {
+
+                }
+            }
+            if (FD_ISSET(i, &write_fds))
+            {
+                if( i == client->sockfd)
+                {
+
+                }
+
+            }
+        }
+    }
+}
+
 int main()
 {
     //Client Init
@@ -261,6 +364,20 @@ int main()
 
     //Send ther server username and password - here server will validate the client and return a list of active users
     debugLog1_constr("%s","Initiating Connection with Server..\n");
+    if(init_connection() == -1)
+    {
+        debugError("Init Connection failed");
+        exit(1);
+    }
+
+    //Start the chat server
+    debugLog1_constr("%s","Receiving List of Username from Server to Chat\n");
+    if(client_hanlde() == -1)
+    {
+        debugError("client Handle");
+        exit(1);
+    }
+
 
 
 
