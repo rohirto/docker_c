@@ -12,10 +12,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <errno.h>
 #include <fcntl.h>
 #include "app_debug.h"
+#include "app_socket.h"
+#include "app_config.h"
 
 #define MAX_LINE 128
 
@@ -122,3 +125,33 @@ free_fd_state(struct fd_state *state)
 
 //     return 0;
 // }
+
+
+/**
+ * @brief Get the server context object
+ * 
+ * @return server_cnxt* 
+ */
+server_cnxt* get_server_context()
+{
+    static server_cnxt chat_server;
+    return &chat_server;
+}
+
+/**
+ * @brief check if the client is still connected or not
+ * @param int socket - file descriptor of the client socket 
+ * @returns -1 on closed socket, 1 on active socket
+*/
+int check_connection(int socket)
+{
+    char data;
+    if(recv(socket,&data,1, MSG_PEEK) == 0) //read one byte
+    {
+        // Socket closed
+        perror("recvall");
+        fprintf(stderr,"selectserver: socket %d hung up\n", socket);
+        return -1;
+    }
+    return 1;
+}
