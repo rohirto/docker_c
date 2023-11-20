@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Iinc
+CFLAGS = -Wall -Iinc -lpthread -L/workspaces/docker_c/archive_lib -lmylib
 
 SRC_DIR = src
 INC_DIR = inc
@@ -18,11 +18,11 @@ all: $(TARGET)
 
 # Rule to build the executable
 $(TARGET): $(OBJ_FILES)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC)  $^ -o $@ $(CFLAGS)
 
 # Rule to build object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC)  -c $< -o $@ $(CFLAGS)
 
 # Clean rule
 clean:
