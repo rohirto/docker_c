@@ -31,6 +31,10 @@
 #include "app_socket.h"
 #include "app_event.h"
 #include <event2/event.h>  //Used for asynchronous sync
+#include "app_db.h"
+
+
+
 
 // Function to dispatch events
 void dispatchEvent(User_Context* client, EventType eventType, EventHandler* eventHandler) 
@@ -61,10 +65,48 @@ void dispatchEvent(User_Context* client, EventType eventType, EventHandler* even
 // Event handler functions
 void onReadHandler(User_Context* client) 
 {
+    unsigned char packet_type;
+    unsigned char len;
     unsigned char buffer[1024];
     int bytesRead;
     // Implement read event handling
-    debugLog2("Reached till here");
+    bytesRead = recv(client->socket, &packet_type, 1, 0);
+
+    switch (packet_type)
+    {
+    case CONFIG_PACKET:
+        //get len
+        bytesRead = recv(client->socket, &len, 1, 0);
+        //Get the username
+        bytesRead = recv(client->socket,buffer,len,0);
+        memset(client->username, 0x00, 8);
+        memcpy(client->username,buffer, len);
+        debugLog1_constr("Username: %s\n",client->username);
+        if((client->userID = username_handling(client->username)) == -1)
+        {
+            debugError("config packet");
+        }
+        else
+        {
+            //set the username to online
+            client->status = ONLINE;
+            if(status_handling(client->userID,client->status) == -1)
+            {
+                debugError("config packet");
+            }
+
+            //Send list to client
+            client->send_msg[0] = CONFIG_PACKET;
+            client->send_flag = 1; 
+        }
+        break;
+    case MESSAGE_PACKET:
+        break;
+    
+    default:
+        debugError("Invalid Packet\n");
+        break;
+    }
     
     // else if (bytesRead == 0)
     // {
@@ -81,6 +123,23 @@ void onReadHandler(User_Context* client)
 void onWriteHandler(User_Context* client) 
 {
     // Implement write event handling
+    switch (client->send_msg[0])
+    {
+    case CONFIG_PACKET:
+        if(send_username(client->socket, client->userID ) == -1)
+        {
+            debugError("write");
+        }
+        client->send_flag = 0;
+        break;
+    
+    case MESSAGE_PACKET:
+        break;
+    
+    default:
+        break;
+    }
+
 }
 
 void onExceptionHandler(User_Context* client) 

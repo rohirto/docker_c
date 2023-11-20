@@ -12,6 +12,7 @@
 #define APP_EVENT_H
 
 #include <pthread.h>
+#include "app_config.h"
 
 /**
  * @brief User context struct
@@ -22,12 +23,16 @@ typedef struct user_cntxt
     unsigned char userID;
     unsigned char username[8];  //8 Bytes username
     unsigned char password[8];  //8 byte password
-    unsigned char status; //0x00 Offline, 0x01 Online
+    int status; //0x00 Offline, 0x01 Online
     unsigned char send_msg[128];
     unsigned char rx_msg[128];
 
     int socket;
+#if USE_THREADS
     pthread_t threadID;
+#endif
+
+    int send_flag;
 
 }User_Context;
 
