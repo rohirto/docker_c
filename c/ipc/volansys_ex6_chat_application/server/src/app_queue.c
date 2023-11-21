@@ -82,14 +82,14 @@ void enqueue_msg(msg_t* message)
     
 }
 
-msg_t* dequeue()
+msg_t* dequeue_msg(int userID)  //If userID matches then its for you
 {
     if(t_head == NULL)
     {
         return NULL;
 
     }
-    else
+    else if(t_head->msgx->userID == userID)
     {
         msg_t* result = t_head->msgx;
         t_comm *temp = t_head;
@@ -100,5 +100,9 @@ msg_t* dequeue()
         }
         free(temp);
         return result;
+    }
+    else
+    {
+        return NULL;
     }
 }

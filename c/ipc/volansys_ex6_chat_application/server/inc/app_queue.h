@@ -23,7 +23,7 @@ typedef struct node node_t;
 
 struct msg
 {
-    char *msg;
+    char msg[140]; //Username.msg
     int userID;
 
 };
@@ -39,5 +39,7 @@ typedef struct inter_thread t_comm;
 //Function Prototypes
 void enqueue(User_Context *);
 User_Context* dequeue();
+void enqueue_msg(msg_t* );
+msg_t* dequeue_msg(int );
 
 #endif
