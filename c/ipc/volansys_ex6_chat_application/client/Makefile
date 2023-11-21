@@ -1,9 +1,11 @@
-CC = gcc
-CFLAGS = -Wall -Iinc -g -L/workspaces/docker_c/archive_lib -lmylib
 
 SRC_DIR = src
 INC_DIR = inc
 BUILD_DIR = build
+STATIC_DIR = ../../../../archive_lib
+
+CC = gcc
+CFLAGS = -Wall -Iinc -g -L$(STATIC_DIR) -lmylib
 
 # Get a list of all .c files in the src directory
 SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
