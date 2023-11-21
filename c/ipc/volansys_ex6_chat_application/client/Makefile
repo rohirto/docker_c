@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Iinc -L/workspaces/docker_c/archive_lib -lmylib
+CFLAGS = -Wall -Iinc -g -L/workspaces/docker_c/archive_lib -lmylib
 
 SRC_DIR = src
 INC_DIR = inc
@@ -12,7 +12,7 @@ SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # The final executable name
-TARGET = $(BUILD_DIR)/client
+TARGET = $(BUILD_DIR)/volansys_ex6_client.out
 
 all: $(TARGET)
 
