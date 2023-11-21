@@ -39,8 +39,9 @@
 #define SERVER_IP "127.0.0.1" // Replace with the server's IP address
 #define SERVER_PORT "9034"    // Replace with the server's port
 
-#define CONFIG_PACKET   0x01
-#define MESSAGE_PACKET  0x02
+#define CONFIG_PACKET       0x01
+#define CHAT_INIT_PACKET    0x02
+#define MESSAGE_PACKET      0x03
 
 
 //Callbacks 
@@ -55,6 +56,7 @@ typedef struct user_cntxt
     unsigned char password[8];  //8 byte password
     unsigned char send_msg[128];
     unsigned char rx_msg[128];
+    int selected_userID;
 }User_Context;
 
 
@@ -73,6 +75,8 @@ typedef struct Client_Context
     socklen_t addrlen;
     char s[INET6_ADDRSTRLEN];
     int sockfd;
+
+    int state;
 
     User_Context cli_usr;
 
@@ -164,6 +168,8 @@ int init_client()
         freeaddrinfo(init_cli_context->servinfo); // all done with this structure
 
         debugLog2("Connected to the server.\n");
+
+        init_cli_context->state = 0;   //init done
     }
     return 0;
 }
@@ -272,6 +278,7 @@ int client_hanlde()
     }
     //User Interaction
     fprintfBlue(stdout,"******* USER NAMES ******************\n");
+    fprintfBlue(stdout,"Enter the UserID to Chat with: \n");
     while(1)
     {
         read_fds = master;  //Save a copy of master
@@ -317,12 +324,14 @@ int client_hanlde()
                             if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
                             {
                                 // Error
-                                perror("recv_all");
+                                debugError("recv_all");
                                 return -1;
                             }
                             unpack(buffer,"8sh", username,&userID);
                             //sscanf(buffer,"%d,%8s",&userID,username);
                             fprintfGreen(stdout,"%d.%s\n",userID, username);
+                            client->state = 1;   //Get ready to get userinput about user to select
+                            
                             break;
                         case MESSAGE_PACKET:
                             break;
@@ -332,13 +341,89 @@ int client_hanlde()
                 }
                 else if(i == fd)  //stdin, every time if something is available on stdin
                 {
+                    if(client->state == 1) //ready to take input
+                    {
+                        char buff[5];
+                        fgets(buff, sizeof(buff), stdin);
+                        buff[strcspn(buff, "\n")] = '\0'; // remove the new line
 
+                        int userID = atoi(buff);  //Got the userID, now need to send to server
+                        client->cli_usr.selected_userID = userID;
+                        client->state = 2;
+                    }
+                    if(client->state == 3)  //Take user for message
+                    {
+                        char buff[128];
+                        fgets(buff, sizeof(buff), stdin); //Need a limiter to 128 bytes only
+                        buff[strcspn(buff, "\n")] = '\0'; // remove the new line
+
+
+                        if(strcmp(buff,"q") == 0)// User wants to quit chatting with this user
+                        {
+                            fprintfRed(stdout,"Stopping Chat...\n");
+                            fprintfBlue(stdout,"******* USER NAMES ******************\n");
+                            fprintfBlue(stdout,"Enter the UserID to Chat with: \n");
+                            
+                            client->state = 5;
+                        }
+                        else
+                        {
+                            //Send the message
+                            strcpy(client->cli_usr.send_msg, buff);
+                            client->state = 4;
+                        }
+
+
+                    }
                 }
             }
             if (FD_ISSET(i, &write_fds))
             {
                 if( i == client->sockfd)
                 {
+                    if(client->state == 2) //UserID got from user, send to server
+                    {
+                        unsigned char buff[128];
+                        buff[0] = CHAT_INIT_PACKET;
+                        int len_to_tx = pack(buff+2,"h",client->cli_usr.selected_userID);
+                        buff[1] = len_to_tx;
+                        len_to_tx = len_to_tx + 2;
+                        if(sendall(client->sockfd,buff,&len_to_tx) == -1)
+                        {
+                            debugError("send_all");
+                            client->state = 0;
+                            return -1;
+                        }
+
+                        client->state = 3;
+                        fprintfBlue(stdout,"Enter your message (q to quit): \n");
+                    }
+                    if(client->state == 4)
+                    {
+                        fprintfBlue(stdout,"Sending msg \n");
+                        //Send message to Server
+                        unsigned char buff[128];
+                        buff[0] = MESSAGE_PACKET;
+                        int len_to_tx = pack(buff+2,"s",client->cli_usr.send_msg);
+                        buff[1] = len_to_tx;
+                        len_to_tx = len_to_tx + 2;
+                        if(sendall(client->sockfd,buff,&len_to_tx) == -1)
+                        {
+                            debugError("send_all");
+                            client->state = 0;
+                            return -1;
+                        }
+                        client->state = 3;  //Again wait for User to send the message
+                    }
+                    if(client->state == 5)
+                    {
+                        if(init_connection() == -1)  //again get the list of active users
+                        {
+                            debugError("Init Connection failed");
+                            return -1;
+                        }
+                        client->state = 1;
+                    }
 
                 }
 
