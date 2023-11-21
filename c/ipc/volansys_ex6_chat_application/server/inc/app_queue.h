@@ -21,6 +21,20 @@ struct node
 };
 typedef struct node node_t;
 
+struct msg
+{
+    char *msg;
+    int userID;
+
+};
+typedef struct msg msg_t;
+
+struct inter_thread
+{
+    struct inter_thread* next;
+    msg_t *msgx;
+};
+typedef struct inter_thread t_comm;
 
 //Function Prototypes
 void enqueue(User_Context *);

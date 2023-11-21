@@ -18,6 +18,10 @@ node_t *head = NULL;
 node_t *tail = NULL;
 
 
+t_comm *t_head = NULL;
+t_comm *t_tail = NULL;
+
+
 void enqueue(User_Context *client)
 {
     node_t *newnode = malloc(sizeof(node_t));
@@ -52,6 +56,47 @@ User_Context* dequeue()
         if(head == NULL)
         {
             tail = NULL;
+        }
+        free(temp);
+        return result;
+    }
+}
+
+void enqueue_msg(msg_t* message)
+{
+    t_comm *newnode = malloc(sizeof(t_comm));
+
+    newnode->msgx = message;
+    newnode->next = NULL;
+
+    if(t_tail == NULL)
+    {
+        t_head = newnode;
+    }
+    else
+    {
+        t_tail->next = newnode;
+    }
+    t_tail = newnode;
+    free(message);
+    
+}
+
+msg_t* dequeue()
+{
+    if(t_head == NULL)
+    {
+        return NULL;
+
+    }
+    else
+    {
+        msg_t* result = t_head->msgx;
+        t_comm *temp = t_head;
+        t_head = t_head->next;
+        if(t_head == NULL)
+        {
+            t_tail = NULL;
         }
         free(temp);
         return result;
