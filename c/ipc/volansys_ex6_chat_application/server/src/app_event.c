@@ -49,7 +49,7 @@ int dispatchEvent(User_Context* client, EventType eventType, EventHandler* event
             if ((bytesRead = recv(client->socket, &c, 1, MSG_PEEK)) == -1)
             {
                 debugError("Socket error\n");
-                //return -1;
+                return -1;
             }
             else if (bytesRead == 0)
             {
@@ -93,18 +93,18 @@ void onReadHandler(User_Context* client)
 {
     unsigned char packet_type;
     unsigned char len;
-    unsigned char buffer[1024];
+    unsigned char buffer[128];
     int bytesRead;
 
 
     // Implement read event handling
     bytesRead = recv(client->socket, &packet_type, 1, 0);
+    //get len
+    bytesRead = recv(client->socket, &len, 1, 0);
 
     switch (packet_type)
     {
     case CONFIG_PACKET:
-        //get len
-        bytesRead = recv(client->socket, &len, 1, 0);
         //Get the username
         bytesRead = recv(client->socket,buffer,len,0);
         memset(client->username, 0x00, 8);
@@ -128,7 +128,17 @@ void onReadHandler(User_Context* client)
             client->send_flag = 1; 
         }
         break;
+    case CHAT_INIT_PACKET:  //User as sent a UserID to initate chat with other user
+        //Recv packet
+        bytesRead = recv(client->socket,buffer,len,0);
+        unpack(buffer,"h",&client->chat_userID);
+        debugLog2("User %s wants to chat with UserID %d\n",client->username,client->chat_userID);
+        break;
     case MESSAGE_PACKET:
+        bytesRead = recv(client->socket,buffer,len,0);
+        unpack(buffer,"s",client->rx_msg);
+        debugLog2("User %s Rx message for %d: %s\n",client->username,client->chat_userID, client->rx_msg);
+        // Need a new set of queue mechanism to handle inter thread messaging
         break;
     
     default:
@@ -160,7 +170,9 @@ void onWriteHandler(User_Context* client)
         }
         client->send_flag = 0;
         break;
-    
+    case CHAT_INIT_PACKET:
+
+        break;
     case MESSAGE_PACKET:
         break;
     
