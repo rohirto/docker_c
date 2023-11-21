@@ -180,6 +180,7 @@ void client_handle(const User_Context* pclient)
 {
     //server_cnxt* server_context = get_server_context();
     User_Context client = *pclient;
+    int retval;
     client.send_flag = 0;
     EventType event;
     // Set up event handlers
@@ -190,7 +191,9 @@ void client_handle(const User_Context* pclient)
         .onException = onExceptionHandler
     };
 
-#if USE_SELECT
+    debugLog2("%s", "Created a new Client thread\n");
+
+#if USE_SELECT_CLI
     fd_set c_master;                      // master file descriptor list
     fd_set c_read_fds;                    // temp file descriptor list for select()
     fd_set c_write_fds;
@@ -202,12 +205,10 @@ void client_handle(const User_Context* pclient)
     FD_ZERO(&c_read_fds);
     FD_ZERO(&c_write_fds);
 
-    FD_SET(client->socket, &c_master);
+    FD_SET(client.socket, &c_master);
     // keep track of the biggest file descriptor
-    c_fdmax = client->socket; // so far, it's this one
- #endif
-
-    debugLog2("%s", "Created a new Client thread\n");
+    c_fdmax = client.socket; // so far, it's this one
+ #else
 
     // receive Username
     unsigned char c, buffer[128];
@@ -215,7 +216,6 @@ void client_handle(const User_Context* pclient)
     {
         debugError("Socket error\n");
     }
-
     unsigned char len;
     if (recv(client.socket, &len, 1, 0) == -1)
     {
@@ -246,9 +246,10 @@ void client_handle(const User_Context* pclient)
             }
         }
     }
+#endif
     while(1)
     {
-#if USE_SELECT
+#if USE_SELECT_CLI
         c_read_fds = c_master;                                              // copy it, need to keep a safe copy of master fds
         c_write_fds = c_master;  
 
@@ -261,46 +262,35 @@ void client_handle(const User_Context* pclient)
         }
 
         // run through the existing connections looking for data to read
-        //Visualizing this loop as a polling agent,which will be used to call our event dispatcher
-        if (FD_ISSET(client->socket, &c_read_fds))
+        // Visualizing this loop as a polling agent,which will be used to call our event dispatcher
+        if (FD_ISSET(client.socket, &c_read_fds))
         {
-            int bytesRead;
             event = READ_EVENT;
-            if ((bytesRead = recv(client->socket, client->rx_msg, 1, MSG_PEEK)) == -1)
+            pthread_mutex_lock(&c_mutex);
+            if((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
             {
-                debugError("Socket error\n");
-                FD_CLR(client->socket,&c_master);
+                close(client.socket);
+                FD_CLR(client.socket,&c_master);
             }
-            else if(bytesRead == 0)
-            {
-                FD_CLR(client->socket, &c_master);
-                close(client->socket);
-                // set the username to offline
-                client->status = OFFLINE;
-                if (status_handling(client->userID, client->status) == -1)
-                {
-                    debugError("status update\n");
-                }
-                debugLog1_destr("Closed Connection on %d\n",client->socket);
-            }
-            else 
-            {
-                dispatchEvent(client, event, &eventHandler);
-            }
-
+            pthread_mutex_unlock(&c_mutex);
         }
-        if (FD_ISSET(client->socket, &c_write_fds))
+        if (FD_ISSET(client.socket, &c_write_fds))
         {
-            if(client->status == ONLINE && client->send_flag == 1)
+            if (client.status == ONLINE && client.send_flag == 1)
             {
                 event = WRITE_EVENT;
-                dispatchEvent(client, event, &eventHandler);
-
+                pthread_mutex_lock(&c_mutex);
+                if ((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
+                {
+                    close(client.socket);
+                    FD_CLR(client.socket, &c_master);
+                }
+                pthread_mutex_unlock(&c_mutex);
             }
         }
 
-#endif
-        
+#else
+
         if (check_connection(client.socket) == -1)
         {
             close(client.socket);
@@ -314,6 +304,7 @@ void client_handle(const User_Context* pclient)
             pthread_mutex_unlock(&c_mutex);
             debugLog1_destr("Closed Connection on %d\n", client.socket);
         }
+#endif
         
     }
 
@@ -405,11 +396,13 @@ int server_listen()
 #endif
 #if USE_THREADS
 //Make the new socket nonblocking
-                // if(make_sock_nonblocking(listener_context->newfd) == -1)
-                // {
-                //     debugError("sock nonblocking");
-                //     continue;
-                // }
+#if USE_SELECT_CLI
+                if(make_sock_nonblocking(listener_context->newfd) == -1)
+                {
+                    debugError("sock nonblocking");
+                    continue;
+                }
+#endif
                 User_Context *new_client = malloc(sizeof(User_Context));
                 if(new_client == NULL )
                 {

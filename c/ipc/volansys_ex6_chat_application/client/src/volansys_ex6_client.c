@@ -108,6 +108,8 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+
+
 /**
  * @brief Init the client, establish a connection with server
  * 
@@ -308,8 +310,8 @@ int client_hanlde()
                     {
                         case CONFIG_PACKET:
                             //List of Username incoming
-                            len = recv(i, &len, 1, 0);
-                            unsigned char buffer[1024], username[9];
+                            recv(i, &len, 1, 0);
+                            unsigned char buffer[128], username[9];
                             int userID;
                             int intPacketLen = (int)len;                 // Cast unsigned char to int
                             if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
@@ -318,8 +320,9 @@ int client_hanlde()
                                 perror("recv_all");
                                 return -1;
                             }
-                            unpack(buffer,"h128s", &userID, username);
-                            fprintfGreen(stdout,"%d.%s",userID, username);
+                            unpack(buffer,"8sh", username,&userID);
+                            //sscanf(buffer,"%d,%8s",&userID,username);
+                            fprintfGreen(stdout,"%d.%s\n",userID, username);
                             break;
                         case MESSAGE_PACKET:
                             break;

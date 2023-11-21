@@ -64,6 +64,6 @@ void onWriteHandler(User_Context* ) ;
 void onExceptionHandler(User_Context* );
 
 //Event dispatcher prototype
-void dispatchEvent(User_Context* , EventType , EventHandler* );
+int dispatchEvent(User_Context* , EventType , EventHandler* );
 
 #endif

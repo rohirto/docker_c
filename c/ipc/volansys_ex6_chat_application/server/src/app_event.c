@@ -37,29 +37,55 @@
 
 
 // Function to dispatch events
-void dispatchEvent(User_Context* client, EventType eventType, EventHandler* eventHandler) 
+int dispatchEvent(User_Context* client, EventType eventType, EventHandler* eventHandler) 
 {
     switch (eventType)
     {
-        case READ_EVENT:
-            if (eventHandler->onRead != NULL) {
+    case READ_EVENT:
+        if (eventHandler->onRead != NULL)
+        {
+            unsigned char c;
+            int bytesRead;
+            if ((bytesRead = recv(client->socket, &c, 1, MSG_PEEK)) == -1)
+            {
+                debugError("Socket error\n");
+                //return -1;
+            }
+            else if (bytesRead == 0)
+            {
+                // set the username to offline
+                client->status = OFFLINE;
+                if (status_handling(client->userID, client->status) == -1)
+                {
+                    debugError("status update\n");
+                }
+                debugLog1_destr("Closed Connection on %d\n", client->socket);
+                return -1;
+            }
+            else
+            {
                 eventHandler->onRead(client);
             }
-            break;
-        case WRITE_EVENT:
-            if (eventHandler->onWrite != NULL) {
-                eventHandler->onWrite(client);
-            }
-            break;
-        case EXCEPTION_EVENT:
-            if (eventHandler->onException != NULL) {
-                eventHandler->onException(client);
-            }
-            break;
-        default:
-            // Handle unknown event type
-            break;
+        }
+        break;
+    case WRITE_EVENT:
+        if (eventHandler->onWrite != NULL)
+        {
+            eventHandler->onWrite(client);
+        }
+        break;
+    case EXCEPTION_EVENT:
+        if (eventHandler->onException != NULL)
+        {
+            eventHandler->onException(client);
+        }
+        break;
+    default:
+        // Handle unknown event type
+        break;
     }
+
+    return 0;
 }
 
 // Event handler functions
@@ -69,6 +95,8 @@ void onReadHandler(User_Context* client)
     unsigned char len;
     unsigned char buffer[1024];
     int bytesRead;
+
+
     // Implement read event handling
     bytesRead = recv(client->socket, &packet_type, 1, 0);
 

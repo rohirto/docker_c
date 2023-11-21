@@ -186,7 +186,7 @@ int update_status_db(int userID, int status)
             debugLog2("userId: %d Not found\n", userID);
             // If userID is not found, add a new entry at the end of the file
             fseek(status_Server_cnxt->status, 0, SEEK_END);
-            fprintf(status_Server_cnxt->status, "\n%d,%d", userID, status);
+            fprintf(status_Server_cnxt->status, "%d,%d\n", userID, status);
             debugLog2("userId: %d Status updated\n", userID);
         }
 
@@ -246,10 +246,10 @@ int sendOnlineUsernames(int socket, int selfUserID)
                 found = 1;
                 // Send the username over the socket
                 buffer[0] = CONFIG_PACKET;
-                //sprintf(&buffer[2],"%d,%s",userID,username);
-                //memcpy(buffer+2, &userID, sizeof(userID));
-                int len_to_tx = pack(buffer+2,"hs",userID,username);
+                //int len_to_tx = sprintf(&buffer[2],"%d,%s",userID,username);
+                int len_to_tx = pack(buffer+2,"sh",username,userID);
                 buffer[1] = (unsigned char) len_to_tx;
+                len_to_tx = len_to_tx + 2;
                 debugLog2("Data to Send %s len: %d\n", username, len_to_tx);
                 if(sendall(socket,buffer, &len_to_tx) == -1)
                 {
@@ -262,9 +262,11 @@ int sendOnlineUsernames(int socket, int selfUserID)
         if (found != 1)
         {
             buffer[0] = CONFIG_PACKET;
-            int len_to_tx = pack(buffer + 2, "hs", -1,"No online User");
+            //int len_to_tx = sprintf(&buffer[2], "%d,%s", 127, "NaN");
+            int len_to_tx = pack(buffer+2,"sh","NaN",-1);
             buffer[1] = (unsigned char)len_to_tx;
-            debugLog2("Data to Send %s len: %d\n", "No online User", len_to_tx);
+            len_to_tx = len_to_tx + 2;
+            debugLog2("Data to Send %s len: %d\n", "NaN", len_to_tx);
             if (sendall(socket, buffer, &len_to_tx) == -1)
             {
                 debugError("sendall");
@@ -286,7 +288,7 @@ int send_username(int socket, int selfUserId)
         return -1;
     }
 
-    sendOnlineUsernames(socket, selfUserId);
+    retval = sendOnlineUsernames(socket, selfUserId);
    
 
     if(fclose_db_files() == -1)

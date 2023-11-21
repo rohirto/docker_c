@@ -13,8 +13,9 @@
 #define APP_CONFIG_H
 
 //Customizations
-#define USE_SELECT  0
-#define USE_THREADS 1
+#define USE_SELECT      0
+#define USE_SELECT_CLI  1
+#define USE_THREADS     1
 
 
 //Defines
