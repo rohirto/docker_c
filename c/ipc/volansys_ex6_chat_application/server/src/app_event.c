@@ -32,6 +32,7 @@
 #include "app_event.h"
 #include <event2/event.h>  //Used for asynchronous sync
 #include "app_db.h"
+#include "app_queue.h"
 
 
 
@@ -125,7 +126,7 @@ void onReadHandler(User_Context* client)
 
             //Send list to client
             client->send_msg[0] = CONFIG_PACKET;
-            client->send_flag = 1; 
+            client->config_flag = 1; 
         }
         break;
     case CHAT_INIT_PACKET:  //User as sent a UserID to initate chat with other user
@@ -139,6 +140,10 @@ void onReadHandler(User_Context* client)
         unpack(buffer,"s",client->rx_msg);
         debugLog2("User %s Rx message for %d: %s\n",client->username,client->chat_userID, client->rx_msg);
         // Need a new set of queue mechanism to handle inter thread messaging
+        
+        client->msg_flag = 1;
+        
+        
         break;
     
     default:
@@ -168,14 +173,24 @@ void onWriteHandler(User_Context* client)
         {
             debugError("write");
         }
-        client->send_flag = 0;
+        client->config_flag = 0;
         break;
     case CHAT_INIT_PACKET:
 
         break;
     case MESSAGE_PACKET:
+        //Send message to user
+        unsigned char buff[128];
+        int len_to_tx = pack(buff+2,"s",&client->send_msg[1]);
+        buff[1] = len_to_tx;
+        len_to_tx = len_to_tx + 2;
+        debugLog2("Data to Send %s len: %d\n", &client->send_msg[1], len_to_tx);
+        if (sendall(client->socket, buff, &len_to_tx) == -1)
+        {
+            debugError("sendall");
+        }
         break;
-    
+
     default:
         break;
     }
