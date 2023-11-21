@@ -3,9 +3,9 @@
  * Chat application [4.5 day, 30 points)
  * 
  * Develop a chat application using socket programming. Make sure to follow the amendments as followed:
- *  1. Multiple clients with a single server.
+ *  1. Multiple clients with a single server. -Done
  *  2. Server should create a dynamic database for storing all the client data and should dynamically update the database based on the client connection –
- *       disconnection. – (Persistent storage is fine)
+ *       disconnection. – (Persistent storage is fine) - Done
  *  3. Multiple clients can chat with each other – BUT, each message should be via server. 
  *      (Use multi-thread, queue for saving and sending older messages)
  *  4. Console based is fine.  No fancy UI required.
