@@ -315,12 +315,14 @@ int client_hanlde()
                     }
                     switch (packet_type)
                     {
+                        unsigned char buffer[140];
+                        int intPacketLen = 0;
                         case CONFIG_PACKET:
                             //List of Username incoming
                             recv(i, &len, 1, 0);
-                            unsigned char buffer[128], username[9];
+                            unsigned char username[9];
                             int userID;
-                            int intPacketLen = (int)len;                 // Cast unsigned char to int
+                            intPacketLen = (int)len;                 // Cast unsigned char to int
                             if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
                             {
                                 // Error
@@ -334,6 +336,17 @@ int client_hanlde()
                             
                             break;
                         case MESSAGE_PACKET:
+                            recv(i, &len, 1, 0);
+                            char message[140];
+                            intPacketLen = (int)len; 
+                            if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
+                            {
+                                // Error
+                                debugError("recv_all");
+                                return -1;
+                            }
+                            unpack(buffer,"128s",message);
+                            fprintfGreen(stdout,"%s\n",message);
                             break;
                         default:
                             break;
