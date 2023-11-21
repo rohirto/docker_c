@@ -1,9 +1,10 @@
 CC = gcc
-CFLAGS = -Wall -Iinc -lpthread -L/workspaces/docker_c/archive_lib -lmylib
+CFLAGS = -Wall -Iinc -g -lpthread -L/workspaces/docker_c/archive_lib -lmylib
 
 SRC_DIR = src
 INC_DIR = inc
 BUILD_DIR = build
+DB_DIR = db
 
 # Get a list of all .c files in the src directory
 SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
@@ -12,7 +13,7 @@ SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRC_FILES))
 
 # The final executable name
-TARGET = $(BUILD_DIR)/server
+TARGET = $(BUILD_DIR)/volansys_ex6_server.out
 
 all: $(TARGET)
 
@@ -28,5 +29,9 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 clean:
 	rm -rf $(BUILD_DIR)
 
+clean_db:
+	rm -rf $(DB_DIR)
+
 # Ensure that build directory exists before building
 $(shell mkdir -p $(BUILD_DIR))
+$(shell mkdir -p $(DB_DIR))
