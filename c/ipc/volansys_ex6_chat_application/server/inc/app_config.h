@@ -26,7 +26,8 @@
 #define THREAD_POOL_SIZE    20
 #endif
 
-#define CONFIG_PACKET   0x01
-#define MESSAGE_PACKET  0x02
+#define CONFIG_PACKET       0x01
+#define CHAT_INIT_PACKET    0x02
+#define MESSAGE_PACKET      0x03
 
 #endif
