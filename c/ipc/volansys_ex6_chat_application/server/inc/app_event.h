@@ -26,6 +26,7 @@ typedef struct user_cntxt
     int status; //0x00 Offline, 0x01 Online
     unsigned char send_msg[128];
     unsigned char rx_msg[128];
+    int chat_userID;
 
     int socket;
 #if USE_THREADS
