@@ -33,7 +33,8 @@ typedef struct user_cntxt
     int threadID;
 #endif
 
-    int send_flag;
+    int config_flag;
+    int msg_flag;
 
 }User_Context;
 
@@ -66,5 +67,10 @@ void onExceptionHandler(User_Context* );
 
 //Event dispatcher prototype
 int dispatchEvent(User_Context* , EventType , EventHandler* );
+
+#if USE_THREADS
+extern pthread_mutex_t m_mutex ;
+extern pthread_cond_t m_cond_var;
+#endif
 
 #endif
