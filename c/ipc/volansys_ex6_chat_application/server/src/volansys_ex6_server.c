@@ -106,7 +106,7 @@ int init_server()
     debugLog2("%s\n","Creating a new threads to handle sockets ");
     for(int i = 0; i < THREAD_POOL_SIZE; i++)
     {
-        pthread_create(&init_context->thread_pool[i],NULL,thread_function, NULL);
+        pthread_create(&init_context->thread_pool[i],NULL,thread_function, &i);
     }
 #endif
 
@@ -176,12 +176,11 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-void* client_handle(void* arg)
+void client_handle(const User_Context* pclient)
 {
-    server_cnxt* server_context = get_server_context();
-    User_Context *client = (User_Context*) arg;
-    free(arg);
-    client->send_flag = 0;
+    //server_cnxt* server_context = get_server_context();
+    User_Context client = *pclient;
+    client.send_flag = 0;
     EventType event;
     // Set up event handlers
     EventHandler eventHandler = 
@@ -212,36 +211,36 @@ void* client_handle(void* arg)
 
     // receive Username
     unsigned char c, buffer[128];
-    if (recv(client->socket, &c, 1, 0) == -1)
+    if (recv(client.socket, &c, 1, 0) == -1)
     {
         debugError("Socket error\n");
     }
 
     unsigned char len;
-    if (recv(client->socket, &len, 1, 0) == -1)
+    if (recv(client.socket, &len, 1, 0) == -1)
     {
         debugError("Socket error\n");
     }
-    recv(client->socket, buffer, len, 0);
-    memset(client->username, 0x00, 8);
-    memcpy(client->username, buffer, len);
-    debugLog1_constr("Username: %s\n", client->username);
-    if ((client->userID = username_handling(client->username)) == -1)
+    recv(client.socket, buffer, len, 0);
+    memset(client.username, 0x00, 8);
+    memcpy(client.username, buffer, len);
+    debugLog1_constr("Username: %s\n", client.username);
+    if ((client.userID = username_handling(client.username)) == -1)
     {
         debugError("config packet");
     }
     else
     {
         // set the username to online
-        client->status = ONLINE;
-        if (status_handling(client->userID, client->status) == -1)
+        client.status = ONLINE;
+        if (status_handling(client.userID, client.status) == -1)
         {
             debugError("config packet");
         }
         else
         {
             // Send the list to client
-            if (send_username(client->socket, client->userID) == -1)
+            if (send_username(client.socket, client.userID) == -1)
             {
                 debugError("write");
             }
@@ -301,22 +300,22 @@ void* client_handle(void* arg)
         }
 
 #endif
-        pthread_mutex_lock(&c_mutex);
-        if (check_connection(client->socket) == -1)
+        
+        if (check_connection(client.socket) == -1)
         {
-            close(client->socket);
+            close(client.socket);
             // set the username to offline
-            client->status = OFFLINE;
-            if (status_handling(client->userID, client->status) == -1)
+            client.status = OFFLINE;
+            pthread_mutex_lock(&c_mutex);
+            if (status_handling(client.userID, client.status) == -1)
             {
                 debugError("status update\n");
             }
-            debugLog1_destr("Closed Connection on %d\n", client->socket);
+            pthread_mutex_unlock(&c_mutex);
+            debugLog1_destr("Closed Connection on %d\n", client.socket);
         }
-        pthread_mutex_unlock(&c_mutex);
+        
     }
-
-    return NULL;
 
 
 
@@ -325,7 +324,7 @@ void* client_handle(void* arg)
 int server_listen()
 {
     server_cnxt* listener_context = get_server_context();
-    int i = 0;  //Iterator for thread
+    //int i = 0;  //Iterator for thread
     // listen
     if (listen(listener_context->listener, 10) == -1)
     {
@@ -451,6 +450,7 @@ void *thread_function(void* arg)
         if(pclient != NULL)
         {
             //We have a new connection handle it acc
+            pclient->threadID = *(int*) arg;  //Store the thread ID
             client_handle(pclient);
 
 
