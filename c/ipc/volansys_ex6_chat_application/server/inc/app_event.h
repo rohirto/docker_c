@@ -29,7 +29,7 @@ typedef struct user_cntxt
 
     int socket;
 #if USE_THREADS
-    pthread_t threadID;
+    int threadID;
 #endif
 
     int send_flag;
