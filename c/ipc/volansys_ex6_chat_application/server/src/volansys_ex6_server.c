@@ -69,6 +69,8 @@ void *thread_function(void*);
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t m_cond_var = PTHREAD_COND_INITIALIZER;
 #endif
 
 int init_database()
@@ -181,7 +183,8 @@ void client_handle(const User_Context* pclient)
     //server_cnxt* server_context = get_server_context();
     User_Context client = *pclient;
     int retval;
-    client.send_flag = 0;
+    client.config_flag = 0;
+    client.msg_flag = 0;
     EventType event;
     // Set up event handlers
     EventHandler eventHandler = 
@@ -272,13 +275,47 @@ void client_handle(const User_Context* pclient)
                 close(client.socket);
                 FD_CLR(client.socket,&c_master);
             }
+            if (client.msg_flag == 1)
+            {
+                msg_t *message = malloc(sizeof(msg_t));
+                if (message == NULL)
+                {
+                    debugError("malloc");
+                    break;
+                }
+                message->userID = client.chat_userID;
+                sprintf(message->msg, "%s:%s", client.username, client.rx_msg);
+                enqueue_msg(message);
+
+                client.msg_flag = 0;
+            }
             pthread_mutex_unlock(&c_mutex);
         }
         if (FD_ISSET(client.socket, &c_write_fds))
         {
-            if (client.status == ONLINE && client.send_flag == 1)
+            if (client.status == ONLINE && client.config_flag == 1)
             {
                 event = WRITE_EVENT;
+                pthread_mutex_lock(&c_mutex);
+                if ((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
+                {
+                    close(client.socket);
+                    FD_CLR(client.socket, &c_master);
+                }
+
+                pthread_mutex_unlock(&c_mutex);
+            }
+
+            // Check if any message from other threads
+            pthread_mutex_lock(&c_mutex);
+            msg_t *message = dequeue_msg(client.userID);
+            pthread_mutex_unlock(&c_mutex);
+            if (message != NULL)
+            {
+                event = WRITE_EVENT;
+                // We have a message
+                client.send_msg[0] = MESSAGE_PACKET;
+                strcpy(&client.send_msg[1], message->msg);
                 pthread_mutex_lock(&c_mutex);
                 if ((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
                 {
