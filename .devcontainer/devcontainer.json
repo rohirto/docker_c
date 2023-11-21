@@ -9,7 +9,8 @@
   "extensions": [
     "ms-vscode.cpptools", // Install the C/C++ extension for Visual Studio Code
     "jbenden.c-cpp-flylint",
-    "cschlosser.doxdocgen"
+    "cschlosser.doxdocgen",
+    "ms-vscode.makefile-tools"
   ],
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind"
