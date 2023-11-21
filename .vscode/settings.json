@@ -23,7 +23,9 @@
         "app_event.h": "c",
         "app_db.h": "c",
         "errno.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "fcntl.h": "c",
+        "app_queue.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,
