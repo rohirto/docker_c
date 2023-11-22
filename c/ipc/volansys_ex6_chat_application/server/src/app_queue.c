@@ -7,11 +7,12 @@
  * 
  * @copyright Copyright (c) 2023 Volansys Technologies
  * 
- * 
+ *  Linked List implementation of Queue to Faciliate Inter thread communications
  * 
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "app_queue.h"
 
 node_t *head = NULL;
@@ -22,6 +23,11 @@ t_comm *t_head = NULL;
 t_comm *t_tail = NULL;
 
 
+/**
+ * @brief Enqueue the incoming client context to a queue, always enqueued by listener thread
+ * 
+ * @param client 
+ */
 void enqueue(User_Context *client)
 {
     node_t *newnode = malloc(sizeof(node_t));
@@ -41,6 +47,11 @@ void enqueue(User_Context *client)
     free(client);
 }
 
+/**
+ * @brief Dequeue the incoming client context, alwaays dequeued by the client threads
+ * 
+ * @return User_Context* 
+ */
 User_Context* dequeue()
 {
     if(head == NULL)
@@ -62,6 +73,11 @@ User_Context* dequeue()
     }
 }
 
+/**
+ * @brief Enqueue a message intended for a client thread, always enqueued by chat sender thread
+ * 
+ * @param message 
+ */
 void enqueue_msg(msg_t* message)
 {
     t_comm *newnode = malloc(sizeof(t_comm));
@@ -83,6 +99,12 @@ void enqueue_msg(msg_t* message)
     
 }
 
+/**
+ * @brief Dequeue a message intended for a client thread, always dequeued by chat receiver thread
+ * 
+ * @param userID User ID of receiver, if matched, only then accept the message, else leave it
+ * @return msg_t* returns the message struct
+ */
 msg_t* dequeue_msg(int userID)  //If userID matches then its for you
 {
     if(t_head == NULL)
