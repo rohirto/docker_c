@@ -181,6 +181,7 @@ void onWriteHandler(User_Context* client)
     case MESSAGE_PACKET:
         //Send message to user
         unsigned char buff[128];
+        buff[0] = MESSAGE_PACKET;
         int len_to_tx = pack(buff+2,"s",&client->send_msg[1]);
         buff[1] = len_to_tx;
         len_to_tx = len_to_tx + 2;
