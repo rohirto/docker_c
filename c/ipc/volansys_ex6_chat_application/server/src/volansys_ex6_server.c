@@ -73,6 +73,11 @@ pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t m_cond_var = PTHREAD_COND_INITIALIZER;
 #endif
 
+/**
+ * @brief Initialize Databases
+ * 
+ * @return int 0 on success and -1 on failure
+ */
 int init_database()
 {
     
@@ -95,7 +100,11 @@ int init_database()
 }
 
 
-
+/**
+ * @brief Initialize the server
+ * 
+ * @return int 0 On sucess -1 on failure
+ */
 int init_server()
 {
     server_cnxt* init_context = get_server_context();
@@ -178,13 +187,20 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+
+/**
+ * @brief Client handle, the thread after getting a new connection, handles it through this function
+ * 
+ * @param pclient User Context, struct which stores all the data related to client handled by that thread
+ */
 void client_handle(const User_Context* pclient)
 {
     //server_cnxt* server_context = get_server_context();
-    User_Context client = *pclient;
+    User_Context client = *pclient;  
     int retval;
     client.config_flag = 0;
     client.msg_flag = 0;
+    client.error_flag = 0;
     EventType event;
     // Set up event handlers
     EventHandler eventHandler = 
@@ -194,7 +210,6 @@ void client_handle(const User_Context* pclient)
         .onException = onExceptionHandler
     };
 
-    debugLog2("%s", "Created a new Client thread\n");
 
 #if USE_SELECT_CLI
     fd_set c_master;                      // master file descriptor list
@@ -270,30 +285,41 @@ void client_handle(const User_Context* pclient)
         {
             event = READ_EVENT;
             pthread_mutex_lock(&c_mutex);
-            if((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
+            retval = dispatchEvent(&client, event, &eventHandler);
+            pthread_mutex_unlock(&c_mutex);
+            if(retval  == -2)
             {
+                //Close the socket and return only when 0 is received on recv
                 close(client.socket);
                 FD_CLR(client.socket,&c_master);
+                return; //Socket closed due to error
             }
-            if (client.msg_flag == 1)
+            else
             {
-                msg_t *message = malloc(sizeof(msg_t));
-                if (message == NULL)
+                // Some normal after event activities
+                if (client.msg_flag == 1)
                 {
-                    debugError("malloc");
-                    break;
-                }
-                message->userID = client.chat_userID;
-                sprintf(message->msg, "%s:%s", client.username, client.rx_msg);
-                enqueue_msg(message);
+                    // Some message has been received and needs to be sent to an appropriate thread
+                    msg_t *message = malloc(sizeof(msg_t));
+                    if (message == NULL)
+                    {
+                        debugError("malloc");
+                        break;
+                    }
+                    message->userID = client.chat_userID;
+                    sprintf(message->msg, "%s:%s", client.username, client.rx_msg);
 
-                client.msg_flag = 0;
+                    pthread_mutex_lock(&m_mutex);
+                    enqueue_msg(message);
+                    pthread_mutex_unlock(&m_mutex);
+
+                    client.msg_flag = 0;
+                }
             }
-            pthread_mutex_unlock(&c_mutex);
         }
         if (FD_ISSET(client.socket, &c_write_fds))
         {
-            if (client.status == ONLINE && client.config_flag == 1)
+            if (client.status == ONLINE && (client.config_flag == 1 || client.error_flag != 0))
             {
                 event = WRITE_EVENT;
                 pthread_mutex_lock(&c_mutex);
@@ -306,23 +332,28 @@ void client_handle(const User_Context* pclient)
                 pthread_mutex_unlock(&c_mutex);
             }
 
+
             // Check if any message from other threads
-            pthread_mutex_lock(&c_mutex);
-            msg_t *message = dequeue_msg(client.userID);
-            pthread_mutex_unlock(&c_mutex);
-            if (message != NULL)
+            int x = pthread_mutex_trylock(&m_mutex);
+            if (x == 0)
             {
-                event = WRITE_EVENT;
-                // We have a message
-                client.send_msg[0] = MESSAGE_PACKET;
-                strcpy(&client.send_msg[1], message->msg);
-                pthread_mutex_lock(&c_mutex);
-                if ((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
+                // Mutex acquired
+                msg_t *message = dequeue_msg(client.userID);
+                pthread_mutex_unlock(&m_mutex);
+                if (message != NULL)
                 {
-                    close(client.socket);
-                    FD_CLR(client.socket, &c_master);
+                    event = WRITE_EVENT;
+                    // We have a message
+                    client.send_msg[0] = MESSAGE_PACKET;
+                    strcpy(&client.send_msg[1], message->msg);
+                    pthread_mutex_lock(&c_mutex);
+                    if ((retval = dispatchEvent(&client, event, &eventHandler)) == -1)
+                    {
+                        close(client.socket);
+                        FD_CLR(client.socket, &c_master);
+                    }
+                    pthread_mutex_unlock(&c_mutex);
                 }
-                pthread_mutex_unlock(&c_mutex);
             }
         }
 
@@ -349,12 +380,18 @@ void client_handle(const User_Context* pclient)
 
 }
 
+
+/**
+ * @brief Listener Function for the Server, It is the Main thread which listens for new connections
+ * 
+ * @return int Never returns, but on error and failure returns -1
+ */
 int server_listen()
 {
     server_cnxt* listener_context = get_server_context();
     //int i = 0;  //Iterator for thread
     // listen
-    if (listen(listener_context->listener, 10) == -1)
+    if (listen(listener_context->listener, MAX_LISTEN_BACKLOG) == -1)
     {
         debugError("listen");
         return -1;
@@ -410,6 +447,7 @@ int server_listen()
                           listener_context->newfd);
 
                 listener_context->no_of_active_connections++;
+                debugLog2("No of Active Connections: %d\n", listener_context->no_of_active_connections);
 
 #if USE_SELECT
                 //Make the new socket nonblocking
@@ -463,6 +501,12 @@ int server_listen()
 }
 
 #if USE_THREADS
+/**
+ * @brief Thread Function, Here the thread waits on a queue for getting new connections from listener
+ * 
+ * @param arg Thread argument, userID in this case
+ * @return void* 
+ */
 void *thread_function(void* arg)
 {
     //Thread Function
@@ -482,6 +526,9 @@ void *thread_function(void* arg)
             //We have a new connection handle it acc
             pclient->threadID = *(int*) arg;  //Store the thread ID
             client_handle(pclient);
+
+            //If here then means client closed the connection
+            debugLog1_destr("Client has Disconnected\n");
 
 
         }
