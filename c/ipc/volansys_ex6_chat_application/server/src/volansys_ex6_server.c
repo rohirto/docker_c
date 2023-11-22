@@ -485,6 +485,7 @@ int server_listen()
                     continue;
                 }
                 new_client->socket = listener_context->newfd;
+                new_client->first_flag = 255;   //To signify that its a brand new connection and not a reconnection
                 //After this will need some synchronization mechanisms
                 pthread_mutex_lock(&mutex);
                 enqueue(new_client);
