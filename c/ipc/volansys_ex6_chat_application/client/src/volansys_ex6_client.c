@@ -42,10 +42,11 @@
 #define CONFIG_PACKET       0x01
 #define CHAT_INIT_PACKET    0x02
 #define MESSAGE_PACKET      0x03
+#define ERROR_PACKET        0x04
 
 
-//Callbacks 
-typedef void (*send_packet_cb)(unsigned char*, int); //Callback to send the packet
+
+
 /**
  * @brief User context struct
  * 
@@ -53,10 +54,12 @@ typedef void (*send_packet_cb)(unsigned char*, int); //Callback to send the pack
 typedef struct user_cntxt
 {
     unsigned char username[8];  //8 Bytes username
-    unsigned char password[8];  //8 byte password
-    unsigned char send_msg[128];
+    //unsigned char password[8];  //8 byte password
+    char send_msg[128];
     unsigned char rx_msg[128];
     int selected_userID;
+    int online_userIDs[20];  //Max 20 threads, thus max 20 online people
+    int i; //Iterator for online ID stack
 }User_Context;
 
 
@@ -79,8 +82,6 @@ typedef struct Client_Context
     int state;
 
     User_Context cli_usr;
-
-    send_packet_cb cli_send;
 
 
 
@@ -169,6 +170,8 @@ int init_client()
 
         debugLog2("Connected to the server.\n");
 
+
+        init_cli_context->cli_usr.i = 0;  //Iterator for stack initialized
         init_cli_context->state = 0;   //init done
     }
     return 0;
@@ -224,19 +227,19 @@ int get_usrname_passwd()
     return 0;
 }
 
+/**
+ * @brief Send username to the server
+ * 
+ * @return int 
+ */
 int init_connection()
 {
     client_cnxt* client = get_client_context();
-    unsigned char config_packet[128];
 
     if(client != NULL)
     {
-        config_packet[0] = CONFIG_PACKET;
-        config_packet[1] = 8;  //Actual len
-        memcpy(config_packet+2,client->cli_usr.username,8);
-        //Send the packet to server
-        int len = 10;
-        if(sendall(client->sockfd,config_packet,&len) == -1)
+        //Send Username to the Server
+        if(send_packet(client->sockfd,CONFIG_PACKET,"s",client->cli_usr.username) == -1)
         {
             debugError("sendall");
             return -1;
@@ -245,11 +248,46 @@ int init_connection()
     }
 
     return 0;
+}
 
+int update_onlineIDs(int userID)
+{
+    client_cnxt* client = get_client_context();
+    if(client->cli_usr.i < 20)
+    {
+        client->cli_usr.online_userIDs[client->cli_usr.i++] = userID;
+    }
+    else
+    {
+        return -1;  //Already 20 Users in List
+    }
+    
+
+    return 0;
+}
+
+int search_onlineIDs(int userID)
+{
+    client_cnxt* client = get_client_context();
+    for(int i = 0; i < 20; i++)
+    {
+        if(client->cli_usr.online_userIDs[i] == userID)
+        {
+            //Yes the userID is valid 
+            return 0;
+        }
+    }
+    return -1;
 
 }
 
-int client_hanlde()
+
+/**
+ * @brief Client Handle to handle the connection with server
+ * 
+ * @return int Usually does not returns, returns -1 on error
+ */
+int client_handle()
 {
     client_cnxt* client = get_client_context();
     fd_set master;                      // master file descriptor list
@@ -257,7 +295,6 @@ int client_hanlde()
     fd_set write_fds;
     int fdmax;                          // maximum file descriptor number
     int fd = fileno(stdin);
-    int rv;
 
     //Macros for select()
     FD_ZERO(&master); // clear the master and temp sets
@@ -277,8 +314,7 @@ int client_hanlde()
         fdmax = fd;
     }
     //User Interaction
-    fprintfBlue(stdout,"******* USER NAMES ******************\n");
-    fprintfBlue(stdout,"Enter the UserID to Chat with: \n");
+    print_chat_header();
     while(1)
     {
         read_fds = master;  //Save a copy of master
@@ -333,6 +369,11 @@ int client_hanlde()
                             unpack(buffer,"8sh", username,&userID);
                             //sscanf(buffer,"%d,%8s",&userID,username);
                             fprintfGreen(stdout,"%d.%s\n",userID, username);
+                            //Update the pool of online userIDs
+                            if(update_onlineIDs(userID) == -1)
+                            {
+                                debugError("UserID Full!");
+                            }
                             client->state = 1;   //Get ready to get userinput about user to select
                             
                             break;
@@ -348,21 +389,45 @@ int client_hanlde()
                             unpack(buffer,"128s",message);
                             fprintfGreen(stdout,"%s\n",message);
                             break;
+
+                        case ERROR_PACKET:
+                            char error[140];
+                            intPacketLen = (int)len; 
+                            if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
+                            {
+                                // Error
+                                debugError("recv_all");
+                                return -1;
+                            }
+                            unpack(buffer,"128s",error);
+                            fprintfRed(stdout,"%s\n",error);
+                            break;
                         default:
                             break;
                     }
                 }
                 else if(i == fd)  //stdin, every time if something is available on stdin
                 {
-                    if(client->state == 1) //ready to take input
+                    if(client->state == 1) //ready to take input, userID
                     {
+
                         char buff[5];
                         fgets(buff, sizeof(buff), stdin);
                         buff[strcspn(buff, "\n")] = '\0'; // remove the new line
 
-                        int userID = atoi(buff);  //Got the userID, now need to send to server
-                        client->cli_usr.selected_userID = userID;
-                        client->state = 2;
+                        int userID = atoi(buff); // Got the userID, now need to send to server
+                        if (search_onlineIDs(userID) == 0)
+                        {
+                            // Yes the user is Online
+                            client->cli_usr.selected_userID = userID;
+                            client->state = 2;
+                        }
+                        else
+                        {
+                            fprintfRed(stdout,"Invalid UserID, please enter a valid UserID\n");
+                        }
+
+                        
                     }
                     if(client->state == 3)  //Take user for message
                     {
@@ -374,9 +439,14 @@ int client_hanlde()
                         if(strcmp(buff,"q") == 0)// User wants to quit chatting with this user
                         {
                             fprintfRed(stdout,"Stopping Chat...\n");
-                            fprintfBlue(stdout,"******* USER NAMES ******************\n");
-                            fprintfBlue(stdout,"Enter the UserID to Chat with: \n");
+                            //User Interaction
+                            print_chat_header();
                             
+                            client->state = 5;
+                        }
+                        else if(strcmp(buff,"r") == 0)
+                        {
+                            //Refresh the list
                             client->state = 5;
                         }
                         else
@@ -409,7 +479,7 @@ int client_hanlde()
                         }
 
                         client->state = 3;
-                        fprintfBlue(stdout,"Enter your message (q to quit): \n");
+                        fprintfBlue(stdout,"Enter your message (q to quit, r to refresh list): \n");
                     }
                     if(client->state == 4)
                     {
@@ -445,6 +515,11 @@ int client_hanlde()
     }
 }
 
+/**
+ * @brief Main Function
+ * 
+ * @return int 
+ */
 int main()
 {
     //Client Init
@@ -473,7 +548,7 @@ int main()
 
     //Start the chat server
     debugLog1_constr("%s","Receiving List of Username from Server to Chat\n");
-    if(client_hanlde() == -1)
+    if(client_handle() == -1)
     {
         debugError("client Handle");
         exit(1);
