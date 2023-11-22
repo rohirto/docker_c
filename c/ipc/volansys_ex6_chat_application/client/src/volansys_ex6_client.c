@@ -299,6 +299,8 @@ int client_hanlde()
                 {
                     int status;
                     unsigned char len, packet_type;
+                    unsigned char buffer[140];
+                    int intPacketLen = 0;
 
                     if ((status = recv(i, &packet_type, 1, 0)) == -1) // first byte of packet is packet type, this is our header
                     {
@@ -313,13 +315,12 @@ int client_hanlde()
                         FD_CLR(i, &master); // remove from master set
                         return -1;
                     }
+                    //Get the len
+                    recv(i, &len, 1, 0);
                     switch (packet_type)
-                    {
-                        unsigned char buffer[140];
-                        int intPacketLen = 0;
+                    { 
                         case CONFIG_PACKET:
-                            //List of Username incoming
-                            recv(i, &len, 1, 0);
+                            
                             unsigned char username[9];
                             int userID;
                             intPacketLen = (int)len;                 // Cast unsigned char to int
@@ -336,7 +337,6 @@ int client_hanlde()
                             
                             break;
                         case MESSAGE_PACKET:
-                            recv(i, &len, 1, 0);
                             char message[140];
                             intPacketLen = (int)len; 
                             if (recvall(i, buffer, &intPacketLen) == -1) // read the remaining packet, username and message
