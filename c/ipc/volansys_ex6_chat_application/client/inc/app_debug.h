@@ -22,7 +22,8 @@ void fprintfBlue(FILE *file, const char *format, ...);
 void fprintfRed(FILE *file, const char *format, ...);
 void fprintfGreen(FILE *file, const char *format, ...);
 void print_chat_header();
-
+int isValidInput(const char *, int ,int);
+int isNumber(const char *);
 
 
 #endif

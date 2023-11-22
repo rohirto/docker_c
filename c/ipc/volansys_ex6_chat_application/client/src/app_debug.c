@@ -13,6 +13,8 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 #include "app_debug.h"
 
 // ANSI color codes
@@ -150,5 +152,43 @@ void print_chat_header()
 {
     fprintfBlue(stdout,"******* USER NAMES ******************\n");
     fprintfBlue(stdout,"Enter the UserID to Chat with: \n");
+}
+
+int isValidInput(const char *input, int limit, int strict) 
+{
+    int i = 0;
+    // Check for special characters or numerals
+    if (strict == 1)
+    {
+        for (i = 0; input[i] != '\0'; i++)
+        {
+            if (!isalpha(input[i]))
+            {
+                return 0; // Invalid input
+            }
+        }
+    }
+
+    // Check the length
+    if (i > limit) 
+    {
+        return 0; // Invalid input, length exceeds 8 characters
+    }
+
+    return 1; // Valid input
+}
+
+int isNumber(const char *input) 
+{
+    char *endptr;
+    strtol(input, &endptr, 10);
+
+    // Check for conversion errors
+    if (*endptr != '\0' && !isspace((unsigned char)*endptr))
+    {
+        return 0; // Not a number
+    }
+
+    return 1; // It's a number
 }
 
