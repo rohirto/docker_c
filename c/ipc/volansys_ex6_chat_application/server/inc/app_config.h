@@ -21,6 +21,7 @@
 //Defines
 #define MAX_USERS       128
 #define PORT "9034" // port we're listening on
+#define MAX_LISTEN_BACKLOG      10
 
 #if USE_THREADS
 #define THREAD_POOL_SIZE    20
@@ -29,5 +30,11 @@
 #define CONFIG_PACKET       0x01
 #define CHAT_INIT_PACKET    0x02
 #define MESSAGE_PACKET      0x03
+#define ERROR_PACKET        0x04
+
+
+//Static Library declarations
+extern unsigned int pack(unsigned char *, char *, ...);
+extern void unpack(unsigned char *, char *, ...);
 
 #endif
