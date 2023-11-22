@@ -79,13 +79,24 @@ void debugLog2(const char *format, ...)
     va_end(args);
 }
 
+/**
+ * @brief Debug Error
+ * 
+ * @param prefix 
+ */
 void debugError(const char *prefix)
 {
     fprintf(stderr," ==> %s%s: %s%s\n", RED_COLOR, prefix, strerror(errno), RESET_COLOR);
 
 }
 
-// Function to print blue text to a file pointer
+/**
+ * @brief Function to print blue text to a file pointer
+ * 
+ * @param file 
+ * @param format 
+ * @param ... 
+ */
 void fprintfBlue(FILE *file, const char *format, ...) 
 {
     va_list args;
@@ -97,6 +108,13 @@ void fprintfBlue(FILE *file, const char *format, ...)
     va_end(args);
 }
 
+/**
+ * @brief Function to print Red text to a file pointer
+ * 
+ * @param file 
+ * @param format 
+ * @param ... 
+ */
 void fprintfRed(FILE *file, const char *format, ...) 
 {
     va_list args;
@@ -108,6 +126,13 @@ void fprintfRed(FILE *file, const char *format, ...)
     va_end(args);
 }
 
+/**
+ * @brief Function to print Green text to a file pointer
+ * 
+ * @param file 
+ * @param format 
+ * @param ... 
+ */
 void fprintfGreen(FILE *file, const char *format, ...) 
 {
     va_list args;

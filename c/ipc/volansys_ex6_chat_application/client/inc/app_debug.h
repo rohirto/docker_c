@@ -21,6 +21,7 @@ void debugError(const char *prefix);
 void fprintfBlue(FILE *file, const char *format, ...);
 void fprintfRed(FILE *file, const char *format, ...);
 void fprintfGreen(FILE *file, const char *format, ...);
+void print_chat_header();
 
 
 
