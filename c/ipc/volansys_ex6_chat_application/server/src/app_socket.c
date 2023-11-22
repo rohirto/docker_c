@@ -170,7 +170,7 @@ void hard_error_handle(const char* message)
  */
 int send_packet(int socket, unsigned char packet_type, const char *format, ...)
 {
-    unsigned char buff[130];
+    unsigned char buff[140];
     int len_to_tx = 0, l = 0;
     buff[0] = packet_type;
 
