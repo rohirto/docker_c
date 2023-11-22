@@ -63,8 +63,14 @@ typedef struct Server_Context
 }server_cnxt;
 
 int sendall(int , unsigned char *, int *);
+int recvall(int , void *, int *);
 int make_sock_nonblocking(int fd);
 server_cnxt* get_server_context();
 int check_connection(int );
+void soft_error_handle(const char*);
+void hard_error_handle(const char* );
+int send_packet(int , unsigned char , const char*,...);
+
+
 
 #endif

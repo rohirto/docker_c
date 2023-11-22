@@ -13,24 +13,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <sys/socket.h>
 #include <errno.h>
 #include <fcntl.h>
 #include "app_debug.h"
 #include "app_socket.h"
 #include "app_config.h"
-
-#define MAX_LINE 128
-
-struct fd_state 
-{
-    char buffer[MAX_LINE];
-    size_t buffer_used;
-
-    int writing;
-    size_t n_written;
-    size_t write_upto;
-};
 
 /**
  * @brief Send all bytes in buffer on socket s
@@ -65,6 +54,36 @@ int sendall(int s, unsigned char *buf, int *len)
 }
 
 /**
+ * @brief receive all the bytes of len to socket 
+ * @param int s - socket descriptor
+ * @param unsigned char *buf - buffer to be rx
+ * @param int* len - len to be rx, also how many bytes were actually rx is updated here
+ * @returns -1 on failure or 0 on success
+ * 
+ * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+*/
+int recvall(int s, void *buf, int *len)
+{
+    unsigned char* buff = (unsigned char*) buf;
+    int total = 0;        // how many bytes we've received
+    int bytesleft = *len; // how many bytes we have left to receive
+    int n = 0;
+    while (total < *len)
+    {
+        n = recv(s, buff + total, bytesleft, 0);
+        if (n == -1)
+        {
+            break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    *len = total;            // return the number actually received here
+    return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
+}
+
+
+/**
  * @brief Make the socket Non Blocking, to acheive async functionality
  * 
  * @param fd file descriptor of socket
@@ -79,52 +98,6 @@ int make_sock_nonblocking(int fd)
     }
     return 0;
 }
-
-struct fd_state *alloc_fd_state(void)
-{
-    struct fd_state *state = malloc(sizeof(struct fd_state));
-    if (!state)
-        return NULL;
-    state->buffer_used = state->n_written = state->writing = state->write_upto = 0;
-    return state;
-}
-
-void
-free_fd_state(struct fd_state *state)
-{
-    free(state);
-}
-
-// int do_read(int fd, struct fd_state *state)
-// {
-//     char buf[1024];
-//     int i;
-//     ssize_t result;
-//     while (1) {
-//         result = recv(fd, buf, sizeof(buf), 0);
-//         if (result <= 0)
-//             break;
-
-//         for (i=0; i < result; ++i)  {
-//             if (state->buffer_used < sizeof(state->buffer))
-//                 state->buffer[state->buffer_used++] = rot13_char(buf[i]);
-//             if (buf[i] == '\n') {
-//                 state->writing = 1;
-//                 state->write_upto = state->buffer_used;
-//             }
-//         }
-//     }
-
-//     if (result == 0) {
-//         return 1;
-//     } else if (result < 0) {
-//         if (errno == EAGAIN)
-//             return 0;
-//         return -1;
-//     }
-
-//     return 0;
-// }
 
 
 /**
@@ -154,4 +127,90 @@ int check_connection(int socket)
         return -1;
     }
     return 1;
+}
+
+/**
+ * @brief Soft error handling on sockets, no exit, just print errorno
+ * 
+ * @param message Message to be printed
+ */
+void soft_error_handle(const char* message)
+{
+    debugError(message);
+    fprintfRed(stderr,"Error Code: %d\n",errno);
+
+    //Based on error no return some value
+}
+
+/**
+ * @brief Hard error handling on sockets, exit with EXIT failure mentioned
+ * 
+ * @param message Message to be printed on exit
+ */
+void hard_error_handle(const char* message)
+{
+    debugError(message);
+    fprintfRed(stderr,"Error Code: %d\n",errno);
+    exit(EXIT_FAILURE);
+}
+
+/**
+ * @brief Send a User Defined Packet
+ * 
+ * @param socket where the data is to be sent
+ * @param packet_type Config, chat init or message packet
+ * @param format the format in which variable args are passed, eg "sh" -> string and signed int
+ * @param ...  Variable arguments
+ * @return int 0 on success -1 on failure
+ * 
+ *  Packet Protocol
+ *  |Packet Type 1 Byte| len 1 Byte | Body - Max 128 Bytes |
+ *  
+ *  Max 130 Bytes packet can be there
+ */
+int send_packet(int socket, unsigned char packet_type, const char *format, ...)
+{
+    unsigned char buff[130];
+    int len_to_tx = 0, l = 0;
+    buff[0] = packet_type;
+
+
+    va_list args;
+    va_start(args, format);
+
+    int h;
+    char *s;
+
+    for(; *format != '\0'; format++) 
+    {
+        switch(*format) 
+        {
+            case 's':
+                s = va_arg(args, char*);
+                l = pack(buff+(2+len_to_tx),"s",s);
+                len_to_tx += l;
+                break;
+            
+            case 'h': // 16-bit
+			    h = va_arg(args, int);
+                l = pack(buff+(2+len_to_tx),"h",h);
+                len_to_tx +=l;
+			    break;
+            
+
+            default:
+                break;
+        }
+        
+    }
+
+    va_end(args);
+    buff[1] = len_to_tx;
+    len_to_tx = len_to_tx + 2;
+    if (sendall(socket, buff, &len_to_tx) == -1)
+    {
+        debugError("sendall");
+        return -1;
+    }
+    return 0;
 }
