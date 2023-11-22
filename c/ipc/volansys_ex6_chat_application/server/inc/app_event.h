@@ -20,11 +20,11 @@
  */
 typedef struct user_cntxt
 {
-    unsigned char userID;
-    unsigned char username[8];  //8 Bytes username
-    unsigned char password[8];  //8 byte password
+    int userID;
+    char username[9];  //8 Bytes username
+    //password[8];  //8 byte password
     int status; //0x00 Offline, 0x01 Online
-    unsigned char send_msg[128];
+    char send_msg[128];
     unsigned char rx_msg[128];
     int chat_userID;
 
@@ -35,6 +35,7 @@ typedef struct user_cntxt
 
     int config_flag;
     int msg_flag;
+    int error_flag;
 
 }User_Context;
 
@@ -68,9 +69,5 @@ void onExceptionHandler(User_Context* );
 //Event dispatcher prototype
 int dispatchEvent(User_Context* , EventType , EventHandler* );
 
-#if USE_THREADS
-extern pthread_mutex_t m_mutex ;
-extern pthread_cond_t m_cond_var;
-#endif
 
 #endif
