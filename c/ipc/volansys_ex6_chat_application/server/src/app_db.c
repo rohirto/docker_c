@@ -125,6 +125,11 @@ int fsearch_db(char *username)
                 {
                     userId = storedUserId;
                     debugLog2("Found existing user: %d\n", userId);
+                    if(onlinestatus(userId) == 1)
+                    {
+                        //User Already online!
+                        return -2;
+                    }
                     break;
                 }
                 lastuserID = storedUserId;
@@ -252,6 +257,10 @@ int update_status_db(int userID, int status)
 int status_handling(int userID, int status)
 {
     int retval = 0;
+    if(userID < 0)
+    {
+        return -2;  //Errors clients have this userID
+    }
     //Open the file descriptors
     if(fopen_db_files() == -1)
     {
