@@ -15,7 +15,9 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include "app_debug.h"
+#include "app_socket.h"
 
 /**
  * @brief Send all bytes in buffer on socket s
@@ -89,6 +91,67 @@ int make_sock_nonblocking(int fd)
     if(fcntl(fd, F_SETFL, O_NONBLOCK) != 0)
     {
         debugError("fcntl");
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Send a User Defined Packet
+ * 
+ * @param socket where the data is to be sent
+ * @param packet_type Config, chat init or message packet
+ * @param format the format in which variable args are passed, eg "sh" -> string and signed int
+ * @param ...  Variable arguments
+ * @return int 0 on success -1 on failure
+ * 
+ *  Packet Protocol
+ *  |Packet Type 1 Byte| len 1 Byte | Body - Max 128 Bytes |
+ *  
+ *  Max 130 Bytes packet can be there
+ */
+int send_packet(int socket, unsigned char packet_type, const char *format, ...)
+{
+    unsigned char buff[130];
+    int len_to_tx = 0, l = 0;
+    buff[0] = packet_type;
+
+
+    va_list args;
+    va_start(args, format);
+
+    int h;
+    char *s;
+
+    for(; *format != '\0'; format++) 
+    {
+        switch(*format) 
+        {
+            case 's':
+                s = va_arg(args, char*);
+                l = pack(buff+(2+len_to_tx),"s",s);
+                len_to_tx += l;
+                break;
+            
+            case 'h': // 16-bit
+			    h = va_arg(args, int);
+                l = pack(buff+(2+len_to_tx),"h",h);
+                len_to_tx +=l;
+			    break;
+            
+
+            default:
+                break;
+        }
+        
+    }
+
+    va_end(args);
+    buff[1] = len_to_tx;
+    len_to_tx = len_to_tx + 2;
+    if (sendall(socket, buff, &len_to_tx) == -1)
+    {
+        debugError("sendall");
         return -1;
     }
     return 0;
