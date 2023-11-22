@@ -21,5 +21,6 @@ int username_handling(char* );
 int status_handling(int, int);
 int send_username(int, int);
 int check_status(int );
+int onlinestatus(int );
 
 #endif
