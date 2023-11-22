@@ -24,7 +24,7 @@ typedef struct user_cntxt
     char username[9];  //8 Bytes username
     //password[8];  //8 byte password
     int status; //0x00 Offline, 0x01 Online
-    char send_msg[128];
+    char send_msg[140];
     unsigned char rx_msg[128];
     int chat_userID;
 
@@ -33,6 +33,7 @@ typedef struct user_cntxt
     int threadID;
 #endif
 
+    int first_flag;
     int config_flag;
     int msg_flag;
     int error_flag;

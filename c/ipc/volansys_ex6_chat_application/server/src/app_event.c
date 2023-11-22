@@ -127,24 +127,42 @@ void onReadHandler(User_Context* client)
         }
         unpack(buffer, "8s", client->username);
         debugLog1_constr("Username: %s\n", client->username);
-        if ((client->userID = username_handling(client->username)) == -1) // Add the username or check if existing in database
+        int ret = username_handling(client->username);
+        if (ret == -1) // Add the username or check if existing in database
         {
             debugError("config packet");
             return;
         }
         else
         {
-            //set the username to online
             client->status = ONLINE;
-            if(status_handling(client->userID,client->status) == -1)  //Update the Online status
+            if (ret == -2)
             {
-                debugError("config packet");
-                return;
+                if (client->first_flag == 255)  //Check if only its the first connections
+                {
+                    // User Already Online!
+                    fprintfRed(stdout, "User Already Online!\n");
+                    client->send_msg[0] = ERROR_PACKET;
+                    client->error_flag = 2; // User already online
+                    break;
+                }
+                client->send_msg[0] = CONFIG_PACKET;
+                client->config_flag = 1; // Now send the username list to client
             }
-
-            //Send list to client
-            client->send_msg[0] = CONFIG_PACKET;
-            client->config_flag = 1; //Now send the username list to client
+            else
+            {
+                // set the username to online
+                client->userID = ret;
+                if (status_handling(client->userID, client->status) == -1) // Update the Online status
+                {
+                    debugError("config packet");
+                    return;
+                }
+                client->first_flag = 0; // Earlier it was 255, now 0 to signify this henceforth it will be reconnection
+                // Send list to client
+                client->send_msg[0] = CONFIG_PACKET;
+                client->config_flag = 1; // Now send the username list to client
+            }
         }
         break;
     case CHAT_INIT_PACKET:  //User as sent a UserID to initate chat with other user
@@ -222,6 +240,13 @@ void onWriteHandler(User_Context* client)
         if(client->error_flag == 1) //User not online error
         {
             if(send_packet(client->socket,ERROR_PACKET,"s","User Not Online") == -1)
+            {
+                soft_error_handle("sendall");
+            }
+        }
+        else if(client->error_flag == 2) //User not online error
+        {
+            if(send_packet(client->socket,ERROR_PACKET,"s","User already Online!") == -1)
             {
                 soft_error_handle("sendall");
             }
