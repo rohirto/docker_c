@@ -15,5 +15,10 @@
 int sendall(int , unsigned char *, int *);
 int make_sock_nonblocking(int fd);
 int recvall(int , void *, int *);
+int send_packet(int , unsigned char , const char *, ...);
+
+//Static Library declarations
+extern unsigned int pack(unsigned char *, char *, ...);
+extern void unpack(unsigned char *, char *, ...);
 
 #endif
