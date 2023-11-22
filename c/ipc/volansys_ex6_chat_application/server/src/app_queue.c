@@ -65,8 +65,9 @@ User_Context* dequeue()
 void enqueue_msg(msg_t* message)
 {
     t_comm *newnode = malloc(sizeof(t_comm));
-
-    newnode->msgx = message;
+    newnode->msgx = malloc(sizeof(msg_t));
+    //newnode->msgx = message;
+    memcpy(newnode->msgx, message, sizeof(msg_t));
     newnode->next = NULL;
 
     if(t_tail == NULL)
