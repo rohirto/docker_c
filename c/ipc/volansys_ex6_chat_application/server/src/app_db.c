@@ -27,6 +27,10 @@
  * ..
  * <EOF>
  * 
+ * Steps to Access the DB Files
+ * step 1: fopen_db_files
+ * step 2: Perform db operations
+ * step 3: fclose_db_files
  */
 
 #include <stdio.h>
@@ -40,7 +44,13 @@ const char* username_file = "../db/username.txt";
 const char* password_file = "../db/passwd.txt";
 const char* status_file = "../db/status.txt";
 
+/**
+ * @brief Open the file descriptors of data bases, needs to be complemeted with close function always
+ * 
+ * @return int 0 on success -1 on failure
+ * 
 
+ */
 int fopen_db_files()
 {
     server_cnxt* init_server_context = get_server_context();
@@ -63,6 +73,11 @@ int fopen_db_files()
     return -1;
 }
 
+/**
+ * @brief Close the file descriptors of data bases, needs to be complemeted with open function always
+ * 
+ * @return int 0 on success -1 on failure
+ */
 int fclose_db_files()
 {
     server_cnxt *free_Server_cnxt = get_server_context();
@@ -81,13 +96,19 @@ int fclose_db_files()
     return -1;
 }
 
-int fsearch_db(unsigned char *username)
+/**
+ * @brief Search a username in db, if not found then add it, max 128 users allowed
+ * 
+ * @param username to be seached or entered
+ * @return int userID on success -1 on failure
+ */
+int fsearch_db(char *username)
 {
     server_cnxt *search_Server_cnxt = get_server_context();
     if (search_Server_cnxt != NULL)
     {
         char line[256];
-        int userId = -1;
+        int userId = -1, i =0;
         int lastuserID = -1;
 
         // Read the file line by line
@@ -107,6 +128,11 @@ int fsearch_db(unsigned char *username)
                     break;
                 }
                 lastuserID = storedUserId;
+            }
+            if(i++ > MAX_USERS)
+            {
+                fprintfRed(stdout,"MAX USERS REACHED\n");
+                break;
             }
         }
         // If UserId is not found, create a new entry
@@ -130,7 +156,13 @@ int fsearch_db(unsigned char *username)
     return -1;
 }
 
-int username_handling(unsigned char* username)
+/**
+ * @brief Handler for username database
+ * 
+ * @param username to be seached
+ * @return int userID on success -1 on failure
+ */
+int username_handling(char* username)
 {
     int retval;
     //Open the file descriptors
@@ -157,6 +189,13 @@ int username_handling(unsigned char* username)
 
 }
 
+/**
+ * @brief Update status in db, if not found then add it, max 128 users allowed
+ * 
+ * @param userID of whos status needs to be updated
+ * @param status Online or Offline
+ * @return int 0 on success -1 on failure
+ */
 int update_status_db(int userID, int status)
 {
     server_cnxt *status_Server_cnxt = get_server_context();
@@ -166,6 +205,7 @@ int update_status_db(int userID, int status)
         int storedUserId, storedStatus;
         long currentPosition;
         int found = 0;
+        int i = 0;
 
         // Loop through the file to find the userID
         while (fscanf(status_Server_cnxt->status, "%d,%d", &storedUserId, &storedStatus) == 2)
@@ -180,9 +220,15 @@ int update_status_db(int userID, int status)
                 debugLog2("userId: %d Status updated\n", userID);
                 break; // No need to continue searching
             }
+            i++;
         }
         if(!found)
         {
+            if(i > MAX_USERS)
+            {
+                fprintfRed(stdout,"MAX USERS REACHED\n");
+                return -1;
+            }
             debugLog2("userId: %d Not found\n", userID);
             // If userID is not found, add a new entry at the end of the file
             fseek(status_Server_cnxt->status, 0, SEEK_END);
@@ -196,6 +242,13 @@ int update_status_db(int userID, int status)
     return -1;
 }
 
+/**
+ * @brief Handler function for status DB
+ * 
+ * @param userID of whos status needs to be updated
+ * @param status Online or Offline
+ * @return int int 0 on success -1 on failure
+ */
 int status_handling(int userID, int status)
 {
     int retval = 0;
@@ -226,13 +279,19 @@ int status_handling(int userID, int status)
 
 }
 
+/**
+ * @brief Send the list of Online User to a newly joined client
+ * 
+ * @param socket of the newly joined client
+ * @param selfUserID The userID of newly joined client, need not be sent to him
+ * @return int 0 on success, -1 on failure
+ */
 int sendOnlineUsernames(int socket, int selfUserID)
 {
     
     server_cnxt *sendnames_Server_cnxt = get_server_context();
     if (sendnames_Server_cnxt != NULL)
     {
-        unsigned char buffer[128];
         int userID, onlineStatus, found = 0;
         char username[9]; // Adjust the size as needed
 
@@ -244,32 +303,18 @@ int sendOnlineUsernames(int socket, int selfUserID)
             if ((onlineStatus == 1) && (userID != selfUserID))
             {
                 found = 1;
-                // Send the username over the socket
-                buffer[0] = CONFIG_PACKET;
-                //int len_to_tx = sprintf(&buffer[2],"%d,%s",userID,username);
-                int len_to_tx = pack(buffer+2,"sh",username,userID);
-                buffer[1] = (unsigned char) len_to_tx;
-                len_to_tx = len_to_tx + 2;
-                debugLog2("Data to Send %s len: %d\n", username, len_to_tx);
-                if(sendall(socket,buffer, &len_to_tx) == -1)
+                if(send_packet(socket,CONFIG_PACKET,"sh",username,userID) == -1)
                 {
-                    debugError("sendall");
+                    debugError("send packet");
                     return -1;
                 }
-                
             }
         }
         if (found != 1)
         {
-            buffer[0] = CONFIG_PACKET;
-            //int len_to_tx = sprintf(&buffer[2], "%d,%s", 127, "NaN");
-            int len_to_tx = pack(buffer+2,"sh","NaN",-1);
-            buffer[1] = (unsigned char)len_to_tx;
-            len_to_tx = len_to_tx + 2;
-            debugLog2("Data to Send %s len: %d\n", "NaN", len_to_tx);
-            if (sendall(socket, buffer, &len_to_tx) == -1)
+            if (send_packet(socket, CONFIG_PACKET, "sh", "NaN", -1) == -1)
             {
-                debugError("sendall");
+                debugError("send packet");
                 return -1;
             }
         }
@@ -277,7 +322,13 @@ int sendOnlineUsernames(int socket, int selfUserID)
     return 0;
 }
 
-
+/**
+ * @brief Handler function for sending username
+ * 
+ * @param socket 
+ * @param selfUserId 
+ * @return int 
+ */
 int send_username(int socket, int selfUserId)
 {
     int retval = 0;
@@ -299,4 +350,70 @@ int send_username(int socket, int selfUserId)
     }
 
     return retval;
+}
+
+
+int onlinestatus(int userID)
+{
+    server_cnxt *checkstatus_Server_cnxt = get_server_context();
+    if (checkstatus_Server_cnxt != NULL)
+    {
+        // Read the file line by line
+        int storedUserId, storedStatus;
+    
+
+        // Loop through the file to find the userID
+        while (fscanf(checkstatus_Server_cnxt->status, "%d,%d", &storedUserId, &storedStatus) == 2)
+        {
+            if (storedUserId == userID)
+            {
+                //Match found
+                if(storedStatus == 1)
+                {
+                    //user is online;
+                    return 1;
+                }
+                else
+                {
+                    //User is offline
+                    return 0;
+                }
+            }
+            else
+            {
+                
+            }
+        }
+
+
+    }
+    //No such user 
+    return -1;
+
+}
+
+int check_status(int userID)
+{
+    int retval = 0;
+    //Open the file descriptors
+    if(fopen_db_files() == -1)
+    {
+        debugError("file open");
+        return -1;
+    }
+
+    if((retval = onlinestatus(userID)) == 1)
+    {
+        //Match found
+    }
+
+    if(fclose_db_files() == -1)
+    {
+        debugError("file close");
+        return -1;
+
+    }
+
+    return retval;
+
 }

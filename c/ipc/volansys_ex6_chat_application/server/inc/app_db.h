@@ -17,8 +17,9 @@
 
 int fopen_db_files();
 int fclose_db_files();
-int username_handling(unsigned char* );
+int username_handling(char* );
 int status_handling(int, int);
 int send_username(int, int);
+int check_status(int );
 
 #endif
