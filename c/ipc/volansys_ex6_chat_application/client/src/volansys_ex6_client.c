@@ -113,6 +113,17 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+void init_onlineIDs()
+{
+    client_cnxt* client = get_client_context();
+    for(int i = 0; i < 20; i++)
+    {
+        client->cli_usr.online_userIDs[i] = 255; //Invalid userIds
+    }
+    client->cli_usr.i = 0;
+
+}
+
 
 
 /**
@@ -171,7 +182,7 @@ int init_client()
         debugLog2("Connected to the server.\n");
 
 
-        init_cli_context->cli_usr.i = 0;  //Iterator for stack initialized
+        init_onlineIDs();  //Iterator for stack initialized
         init_cli_context->state = 0;   //init done
     }
     return 0;
@@ -185,40 +196,22 @@ int init_client()
 int get_usrname_passwd()
 {
     client_cnxt* username_passwd_context = get_client_context();
-    unsigned char input[128];  //8 bytes + 1 null terminator
+    char input[128];  //8 bytes + 1 null terminator
+    fprintfBlue(stdout, "Enter Username: ");
     while (1) 
     {
-        fprintfBlue(stdout, "Enter Username: ");
-        if (fgets((char*)input, sizeof(input), stdin)) 
+        
+        fgets(input, sizeof(input), stdin);
+        input[strcspn(input, "\n")] = '\0'; // remove the new line
+        if (isValidInput(input, 8,1) == 1)
         {
-            size_t len = strlen((char*)input);
-            if (len > 0 && input[len - 1] == '\n') 
-            {
-                // Remove the newline character
-                input[len - 1] = '\0';
-                len--;
-            }
+            // Valid input
+            break;
 
-            if (len > 8) 
-            {
-                fprintfRed(stdout,"Username is too long. Please enter up to 8 characters.\n");
-            } 
-            else if (len < 8) 
-            {
-                // Pad the string with null bytes
-                memset(input + len, 0x00, 8 - len);
-                break;
-            } 
-            else 
-            {
-                break; // Length is exactly 8, no padding needed
-            }
         }
         else
         {
-            // Handle input error
-            fprintfRed(stderr,"Error reading input.\n");
-            return -1;
+            fprintfRed(stdout, "Please Enter upto chars and alphabets only\n");
         }
     }
 
@@ -245,10 +238,14 @@ int init_connection()
             return -1;
         }
 
+        //Expect some Ack
+
+
     }
 
     return 0;
 }
+
 
 int update_onlineIDs(int userID)
 {
@@ -401,6 +398,12 @@ int client_handle()
                             }
                             unpack(buffer,"128s",error);
                             fprintfRed(stdout,"%s\n",error);
+                            if(strcmp(error,"User already Online!") == 0)
+                            {
+                                //Exit in this case
+                                debugError("user repeat");
+                                return -1;
+                            }
                             break;
                         default:
                             break;
@@ -414,49 +417,57 @@ int client_handle()
                         char buff[5];
                         fgets(buff, sizeof(buff), stdin);
                         buff[strcspn(buff, "\n")] = '\0'; // remove the new line
-
-                        int userID = atoi(buff); // Got the userID, now need to send to server
-                        if (search_onlineIDs(userID) == 0)
+                        if (isNumber(buff) == 1)
                         {
-                            // Yes the user is Online
-                            client->cli_usr.selected_userID = userID;
-                            client->state = 2;
+                            // Is a no.
+                            int userID = atoi(buff); // Got the userID, now need to send to server
+                            if (search_onlineIDs(userID) == 0)
+                            {
+                                // Yes the user is Online
+                                client->cli_usr.selected_userID = userID;
+                                client->state = 2;
+                            }
+                            else
+                            {
+                                fprintfRed(stdout, "Invalid UserID, please enter a valid UserID\n");
+                            }
                         }
                         else
                         {
-                            fprintfRed(stdout,"Invalid UserID, please enter a valid UserID\n");
+                            fprintfRed(stdout, "Not a Number, please enter a valid UserID\n");
                         }
-
-                        
                     }
-                    if(client->state == 3)  //Take user for message
+                    if (client->state == 3) // Take user for message
                     {
-                        char buff[128];
-                        fgets(buff, sizeof(buff), stdin); //Need a limiter to 128 bytes only
+                        char buff[140];
+                        fgets(buff, sizeof(buff), stdin); // Need a limiter to 128 bytes only
                         buff[strcspn(buff, "\n")] = '\0'; // remove the new line
-
-
-                        if(strcmp(buff,"q") == 0)// User wants to quit chatting with this user
+                        if (isValidInput(buff,128,0) == 1)
                         {
-                            fprintfRed(stdout,"Stopping Chat...\n");
-                            //User Interaction
-                            print_chat_header();
-                            
-                            client->state = 5;
-                        }
-                        else if(strcmp(buff,"r") == 0)
-                        {
-                            //Refresh the list
-                            client->state = 5;
+                            if (strcmp(buff, "q") == 0) // User wants to quit chatting with this user
+                            {
+                                fprintfRed(stdout, "Stopping Chat...\n");
+                                // User Interaction
+                                print_chat_header();
+
+                                client->state = 5;
+                            }
+                            else if (strcmp(buff, "r") == 0)
+                            {
+                                // Refresh the list
+                                client->state = 5;
+                            }
+                            else
+                            {
+                                // Send the message
+                                strcpy(client->cli_usr.send_msg, buff);
+                                client->state = 4;
+                            }
                         }
                         else
                         {
-                            //Send the message
-                            strcpy(client->cli_usr.send_msg, buff);
-                            client->state = 4;
+                            fprintfRed(stdout, "Invalid input, please retry");
                         }
-
-
                     }
                 }
             }
@@ -500,6 +511,7 @@ int client_handle()
                     }
                     if(client->state == 5)
                     {
+                        init_onlineIDs();
                         if(init_connection() == -1)  //again get the list of active users
                         {
                             debugError("Init Connection failed");
