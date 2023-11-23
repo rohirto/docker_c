@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y \
     valgrind \
     cppcheck \
     libncurses-dev \
-    libevent-dev\
+    libevent-dev \
+    doxygen \
     && rm -rf /var/lib/apt/lists/*
 
 # Install required dependencies
