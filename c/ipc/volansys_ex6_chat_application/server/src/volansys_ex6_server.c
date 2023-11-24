@@ -1,5 +1,13 @@
 /**
- * MEGA Exercise
+ * @file volansys_ex6_server.c
+ * @author rohit S
+ * @brief Server file for the Me chat application
+ * @version 0.1
+ * @date 2023-11-24
+ * 
+ * @copyright Copyright (c) 2023 Volansys Technologies
+ * 
+ * @paragraph MEGA Exercise
  * Chat application [4.5 day, 30 points)
  * 
  * Develop a chat application using socket programming. Make sure to follow the amendments as followed:
@@ -18,11 +26,7 @@
  * Will be going with Event Driven Approach, which is Asynchronous as opposed to earlier Synchronous approach (Select functions)
  * 
  * 
-
- * 
- * 
-
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,17 +70,19 @@ void *thread_function(void*);
 
 #if USE_THREADS
 //Sync Variables
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t m_cond_var = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;  /**< Mutex for client Queue */
+pthread_mutex_t c_mutex = PTHREAD_MUTEX_INITIALIZER; /**< Mutex for client ops */
+pthread_cond_t condition_var = PTHREAD_COND_INITIALIZER; /**< Cond var for client Queue */
+pthread_mutex_t m_mutex = PTHREAD_MUTEX_INITIALIZER;  /**< Mutex for message Queue */
+pthread_cond_t m_cond_var = PTHREAD_COND_INITIALIZER; /**< Cond var for client Queue */
 #endif
 
 /**
  * @brief Initialize Databases
  * 
  * @return int 0 on success and -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int init_database()
 {
@@ -104,6 +110,8 @@ int init_database()
  * @brief Initialize the server
  * 
  * @return int 0 On sucess -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int init_server()
 {
@@ -177,6 +185,8 @@ int init_server()
  * 
  * @param sa 
  * @return * void* 
+ * @callgraph
+ * @callergraph
  */
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -192,6 +202,8 @@ void *get_in_addr(struct sockaddr *sa)
  * @brief Client handle, the thread after getting a new connection, handles it through this function
  * 
  * @param pclient User Context, struct which stores all the data related to client handled by that thread
+ * @callgraph
+ * @callergraph
  */
 void client_handle(const User_Context* pclient)
 {
@@ -385,6 +397,8 @@ void client_handle(const User_Context* pclient)
  * @brief Listener Function for the Server, It is the Main thread which listens for new connections
  * 
  * @return int Never returns, but on error and failure returns -1
+ * @callgraph
+ * @callergraph
  */
 int server_listen()
 {
@@ -507,6 +521,9 @@ int server_listen()
  * 
  * @param arg Thread argument, userID in this case
  * @return void* 
+ * @callgraph
+ * @callergraph
+ * 
  */
 void *thread_function(void* arg)
 {
@@ -543,6 +560,8 @@ void *thread_function(void* arg)
  * @brief Main function
  * 
  * @return int 
+ * @callgraph
+ * @callergraph
  */
 int main()
 {
