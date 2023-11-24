@@ -44,6 +44,8 @@
  * @param eventType Read, Write or exception
  * @param eventHandler Handlers are called based on event, implemented using function pointers (callback functions)
  * @return int 0 on success, -1 on soft error, -2 on hard error (client connection closed, release thread for new connection)
+ * @callgraph
+ * @callergraph
  */
 int dispatchEvent(User_Context* client, EventType eventType, EventHandler* eventHandler) 
 {
@@ -100,6 +102,8 @@ int dispatchEvent(User_Context* client, EventType eventType, EventHandler* event
  * @brief Read Handler, handles incoming data on socket
  * 
  * @param client User context of thread
+ * @callgraph
+ * @callergraph
  */
 void onReadHandler(User_Context* client) 
 {
@@ -213,6 +217,8 @@ void onReadHandler(User_Context* client)
  * @brief Write handler, handles writing to the socket
  * 
  * @param client 
+ * @callgraph
+ * @callergraph
  */
 void onWriteHandler(User_Context* client) 
 {
@@ -264,6 +270,8 @@ void onWriteHandler(User_Context* client)
  * @brief Exception Handler
  * 
  * @param client 
+ * @callgraph
+ * @callergraph
  */
 void onExceptionHandler(User_Context* client) 
 {
