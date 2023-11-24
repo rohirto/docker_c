@@ -40,14 +40,16 @@
 #include "app_debug.h"
 
 //GLobal Variables
-const char* username_file = "../db/username.txt";
-const char* password_file = "../db/passwd.txt";
-const char* status_file = "../db/status.txt";
+const char* username_file = "../db/username.txt";   /**< File location of Username File database */
+const char* password_file = "../db/passwd.txt";     /**< File location of Password File database */
+const char* status_file = "../db/status.txt";       /**< File location of Status File database */
 
 /**
  * @brief Open the file descriptors of data bases, needs to be complemeted with close function always
  * 
  * @return int 0 on success -1 on failure
+ * @callgraph
+ * @callergraph
  * 
 
  */
@@ -77,6 +79,8 @@ int fopen_db_files()
  * @brief Close the file descriptors of data bases, needs to be complemeted with open function always
  * 
  * @return int 0 on success -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int fclose_db_files()
 {
@@ -101,6 +105,8 @@ int fclose_db_files()
  * 
  * @param username to be seached or entered
  * @return int userID on success -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int fsearch_db(char *username)
 {
@@ -166,6 +172,8 @@ int fsearch_db(char *username)
  * 
  * @param username to be seached
  * @return int userID on success -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int username_handling(char* username)
 {
@@ -200,6 +208,8 @@ int username_handling(char* username)
  * @param userID of whos status needs to be updated
  * @param status Online or Offline
  * @return int 0 on success -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int update_status_db(int userID, int status)
 {
@@ -253,6 +263,8 @@ int update_status_db(int userID, int status)
  * @param userID of whos status needs to be updated
  * @param status Online or Offline
  * @return int int 0 on success -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int status_handling(int userID, int status)
 {
@@ -294,6 +306,8 @@ int status_handling(int userID, int status)
  * @param socket of the newly joined client
  * @param selfUserID The userID of newly joined client, need not be sent to him
  * @return int 0 on success, -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int sendOnlineUsernames(int socket, int selfUserID)
 {
@@ -337,6 +351,8 @@ int sendOnlineUsernames(int socket, int selfUserID)
  * @param socket 
  * @param selfUserId 
  * @return int 
+ * @callgraph
+ * @callergraph
  */
 int send_username(int socket, int selfUserId)
 {
@@ -361,7 +377,14 @@ int send_username(int socket, int selfUserId)
     return retval;
 }
 
-
+/**
+ * @brief Get the Online Status of the user ID, file descriptors needs to be already open
+ * 
+ * @param userID user Id whos status needs to be known
+ * @return int 1 if user is online, 0 if offline, -1 if no such user in the database
+ * @callgraph
+ * @callergraph
+ */
 int onlinestatus(int userID)
 {
     server_cnxt *checkstatus_Server_cnxt = get_server_context();
@@ -401,6 +424,14 @@ int onlinestatus(int userID)
 
 }
 
+/**
+ * @brief Check the status of the UserID passed as arg, it opens the FDs performs the op and closes the FDs
+ * 
+ * @param userID 
+ * @return int 1 if user is Online, 0 if user if Offline, -1 if user is not there or any error has occured
+ * @callgraph
+ * @callergraph
+ */
 int check_status(int userID)
 {
     int retval = 0;
