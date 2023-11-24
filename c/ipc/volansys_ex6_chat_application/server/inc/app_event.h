@@ -20,32 +20,36 @@
  */
 typedef struct user_cntxt
 {
-    int userID;
-    char username[9];  //8 Bytes username
+    int userID;                 /**< USer ID of that User Context */
+    char username[9];           /**< User name - can be max 8 bytes */
     //password[8];  //8 byte password
-    int status; //0x00 Offline, 0x01 Online
-    char send_msg[140];
-    unsigned char rx_msg[128];
-    int chat_userID;
+    int status;                 /**< Status - 1 Online, 0 Offline */
+    char send_msg[140];         /**< Send message buffer of User Context */
+    unsigned char rx_msg[128];  /**< Rx message buffer of User Context */
+    int chat_userID;            /**< Current UserID with whom this User is chatting, 255 signifies no active user Id*/
 
-    int socket;
+    int socket;                 /**< Scket FD of the USer*/
 #if USE_THREADS
-    int threadID;
+    int threadID;               /**< Thread ID, 0 to 20 */
 #endif
 
-    int first_flag;
-    int config_flag;
-    int msg_flag;
-    int error_flag;
+    int first_flag;             /**< 255 when first initialized, 0 when the user has been sent username list even once */
+    int config_flag;            /**< Set when some config packet is received and needs to be processesd*/
+    int msg_flag;               /**< Set when some message packet is received */
+    int error_flag;             /**< Set when some error flag is received */
 
 }User_Context;
 
-// Define event types
+
+/**
+ * @brief Enum of Event types
+ * 
+ */
 typedef enum 
 {
-    READ_EVENT,
-    WRITE_EVENT,
-    EXCEPTION_EVENT
+    READ_EVENT,             /**< Read Event */
+    WRITE_EVENT,            /**< Write Event */
+    EXCEPTION_EVENT         /**< Exception Event */
 } EventType;
 
 // Event callback function signatures
@@ -54,6 +58,10 @@ typedef void (*WriteEventHandler)(User_Context*);
 typedef void (*ExceptionEventHandler)(User_Context*);
 
 // Structure to hold event handlers
+/**
+ * @brief struct where callback handlers are defined
+ * 
+ */
 typedef struct 
 {
     ReadEventHandler onRead;
