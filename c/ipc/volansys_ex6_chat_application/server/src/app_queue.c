@@ -15,18 +15,19 @@
 #include <string.h>
 #include "app_queue.h"
 
-node_t *head = NULL;
-node_t *tail = NULL;
+node_t *head = NULL;    /**< Head of Client Queue */
+node_t *tail = NULL;    /**< Tail of Client Queue */
 
 
-t_comm *t_head = NULL;
-t_comm *t_tail = NULL;
+t_comm *t_head = NULL;  /**< Head of Message Queue */
+t_comm *t_tail = NULL;  /**< Tail of Message Queue */
 
 
 /**
  * @brief Enqueue the incoming client context to a queue, always enqueued by listener thread
  * 
  * @param client 
+ * @callergraph
  */
 void enqueue(User_Context *client)
 {
@@ -51,6 +52,7 @@ void enqueue(User_Context *client)
  * @brief Dequeue the incoming client context, alwaays dequeued by the client threads
  * 
  * @return User_Context* 
+ * @callergraph
  */
 User_Context* dequeue()
 {
@@ -77,6 +79,7 @@ User_Context* dequeue()
  * @brief Enqueue a message intended for a client thread, always enqueued by chat sender thread
  * 
  * @param message 
+ * @callergraph
  */
 void enqueue_msg(msg_t* message)
 {
@@ -104,6 +107,7 @@ void enqueue_msg(msg_t* message)
  * 
  * @param userID User ID of receiver, if matched, only then accept the message, else leave it
  * @return msg_t* returns the message struct
+ * @callergraph
  */
 msg_t* dequeue_msg(int userID)  //If userID matches then its for you
 {
