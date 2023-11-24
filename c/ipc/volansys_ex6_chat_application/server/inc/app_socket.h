@@ -28,24 +28,24 @@
  */
 typedef struct Server_Context
 {
-    unsigned int no_of_active_connections;  /* No of Active Connections */
+    unsigned int no_of_active_connections;  /**< No of Active Connections */
 
-    FILE* username;             /* File Pointer of Username file */
-    FILE* password;             /* File Pointer of Password File */
-    FILE* status;               /* File Pointer of Status File */
+    FILE* username;             /**< File Pointer of Username file */
+    FILE* password;             /**< File Pointer of Password File */
+    FILE* status;               /**< File Pointer of Status File */
 
-    int listener;               /* Listener for new connetions */
-    struct addrinfo hints;      /* Some Server related structs */
+    int listener;               /**< Listener for new connetions */
+    struct addrinfo hints;      /**< Some Server related structs */
     struct addrinfo *ai; 
     struct addrinfo *p; 
 
-    struct sockaddr_storage remoteaddr;     /* Client Connection related Variables*/
+    struct sockaddr_storage remoteaddr;     /**< Client Connection related Variables*/
     socklen_t addrlen;
     char remoteIP[INET6_ADDRSTRLEN];
     int newfd;
 
 #if USE_SELECT
-    fd_set readset;             /* File Descriptor sets */
+    fd_set readset;             /*< File Descriptor sets */
     fd_set writeset;
     fd_set exset;
     fd_set master;
@@ -54,7 +54,7 @@ typedef struct Server_Context
 
 
     #if USE_THREADS
-    pthread_t thread_pool[THREAD_POOL_SIZE];
+    pthread_t thread_pool[THREAD_POOL_SIZE];    /**< Thread pool defined*/
     
     #endif
 
