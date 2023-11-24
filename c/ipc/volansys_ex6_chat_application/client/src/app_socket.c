@@ -26,6 +26,8 @@
  * @param buf unsigned char* buffer to be sent
  * @param len int* no of bytes to be sent, updated with actual no of bytes
  * @return int -1 on failure, 0 on success
+ * @callgraph
+ * @callergraph
  */
 int sendall(int s, unsigned char *buf, int *len)
 {
@@ -59,6 +61,8 @@ int sendall(int s, unsigned char *buf, int *len)
  * @returns -1 on failure or 0 on success
  * 
  * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+ * @callgraph
+ * @callergraph
 */
 int recvall(int s, void *buf, int *len)
 {
@@ -85,6 +89,8 @@ int recvall(int s, void *buf, int *len)
  * 
  * @param fd file descriptor of socket
  * @return int 0 on success, -1 on failure
+ * @callgraph
+ * @callergraph
  */
 int make_sock_nonblocking(int fd)
 {
@@ -104,8 +110,9 @@ int make_sock_nonblocking(int fd)
  * @param format the format in which variable args are passed, eg "sh" -> string and signed int
  * @param ...  Variable arguments
  * @return int 0 on success -1 on failure
- * 
- *  Packet Protocol
+ * @callgraph
+ * @callergraph
+ * @paragraph Protocol
  *  |Packet Type 1 Byte| len 1 Byte | Body - Max 128 Bytes |
  *  
  *  Max 130 Bytes packet can be there
