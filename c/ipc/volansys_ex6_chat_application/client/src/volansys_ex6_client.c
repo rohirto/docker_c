@@ -36,13 +36,13 @@
 #include "app_socket.h"
 
 //defines
-#define SERVER_IP "127.0.0.1" // Replace with the server's IP address
-#define SERVER_PORT "9034"    // Replace with the server's port
+#define SERVER_IP "127.0.0.1"       /**< Replace with the server's IP address */
+#define SERVER_PORT "9034"          /**< Replace with the server's port */
 
-#define CONFIG_PACKET       0x01
-#define CHAT_INIT_PACKET    0x02
-#define MESSAGE_PACKET      0x03
-#define ERROR_PACKET        0x04
+#define CONFIG_PACKET       0x01    /**< Config Packets - for config purpose - username getting*/
+#define CHAT_INIT_PACKET    0x02    /**< Chat init packet - from client to server only, to let server know which user Id to chat with */
+#define MESSAGE_PACKET      0x03    /**< Message Packet - Carries message intended for the other client thread */
+#define ERROR_PACKET        0x04    /**< Error packets - from server to client only, when some error has occured */
 
 
 
@@ -53,13 +53,13 @@
  */
 typedef struct user_cntxt
 {
-    unsigned char username[8];  //8 Bytes username
+    unsigned char username[8];  /**< Username of client */
     //unsigned char password[8];  //8 byte password
-    char send_msg[128];
-    unsigned char rx_msg[128];
-    int selected_userID;
-    int online_userIDs[20];  //Max 20 threads, thus max 20 online people
-    int i; //Iterator for online ID stack
+    char send_msg[128];         /**< Send message Buffer*/
+    unsigned char rx_msg[128];  /**< Rx message Buffer */
+    int selected_userID;        /**< User Id to be chatted with */
+    int online_userIDs[20];  /**< Max 20 threads, thus max 20 online people*/
+    int i;                  /**< Iterator for online ID stack */
 }User_Context;
 
 
@@ -70,11 +70,11 @@ typedef struct user_cntxt
 typedef struct Client_Context
 {
 
-    struct addrinfo hints;      /* Some Server related structs */
+    struct addrinfo hints;      /**< Some Server related structs */
     struct addrinfo *servinfo; 
     struct addrinfo *p; 
 
-    struct sockaddr_storage remoteaddr;     /* Client Connection related Variables*/
+    struct sockaddr_storage remoteaddr;     /**< Client Connection related Variables*/
     socklen_t addrlen;
     char s[INET6_ADDRSTRLEN];
     int sockfd;
@@ -91,6 +91,7 @@ typedef struct Client_Context
  * @brief Get the client context object
  * 
  * @return client_cnxt* 
+ * @callergraph
  */
 client_cnxt* get_client_context()
 {
@@ -103,6 +104,7 @@ client_cnxt* get_client_context()
  * 
  * @param sa 
  * @return * void* 
+ * @callergraph
  */
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -113,6 +115,11 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
+/**
+ * @brief initialize OnlineIDS array
+ * @callergraph
+ * 
+ */
 void init_onlineIDs()
 {
     client_cnxt* client = get_client_context();
@@ -129,7 +136,9 @@ void init_onlineIDs()
 /**
  * @brief Init the client, establish a connection with server
  * 
- * @return int 
+ * @return int
+ * @callgraph 
+ * @callergraph
  */
 int init_client()
 {
@@ -192,6 +201,8 @@ int init_client()
  * @brief Get the usrname passwd object
  * 
  * @return int - On success 0, on failure -1
+ * @callgraph 
+ * @callergraph
  */
 int get_usrname_passwd()
 {
@@ -224,6 +235,8 @@ int get_usrname_passwd()
  * @brief Send username to the server
  * 
  * @return int 
+ * @callgraph 
+ * @callergraph
  */
 int init_connection()
 {
@@ -246,7 +259,14 @@ int init_connection()
     return 0;
 }
 
-
+/**
+ * @brief Update the Online IDs array
+ * 
+ * @param userID 
+ * @return int 0 on success -1 if already 20 users in list
+ * @callgraph 
+ * @callergraph
+ */
 int update_onlineIDs(int userID)
 {
     client_cnxt* client = get_client_context();
@@ -263,6 +283,14 @@ int update_onlineIDs(int userID)
     return 0;
 }
 
+/**
+ * @brief Search a USerID in OnlineIDs array
+ * 
+ * @param userID to be searched in Online UserID arrays
+ * @return int 0 if present and valid, -1 if no
+ * @callgraph 
+ * @callergraph
+ */
 int search_onlineIDs(int userID)
 {
     client_cnxt* client = get_client_context();
@@ -283,6 +311,8 @@ int search_onlineIDs(int userID)
  * @brief Client Handle to handle the connection with server
  * 
  * @return int Usually does not returns, returns -1 on error
+ * @callgraph 
+ * @callergraph
  */
 int client_handle()
 {
@@ -434,7 +464,20 @@ int client_handle()
                         }
                         else
                         {
-                            fprintfRed(stdout, "Not a Number, please enter a valid UserID\n");
+                            if (strcmp(buff, "r") == 0)
+                            {
+                                // Refresh the List
+                                print_chat_header();
+                                client->state = 5;
+                            }
+                            else if(strcmp(buff, "q") == 0)
+                            {
+                                client->state = 6;
+                            }
+                            else
+                            {
+                                fprintfRed(stdout, "Not a Number, please enter a valid UserID\n");
+                            }
                         }
                     }
                     if (client->state == 3) // Take user for message
@@ -446,15 +489,16 @@ int client_handle()
                         {
                             if (strcmp(buff, "q") == 0) // User wants to quit chatting with this user
                             {
-                                fprintfRed(stdout, "Stopping Chat...\n");
+                                fprintfRed(stdout, "Stopping Chat and Exiting Application...\n");
                                 // User Interaction
-                                print_chat_header();
+                                //print_chat_header();
 
-                                client->state = 5;
+                                client->state = 6;
                             }
                             else if (strcmp(buff, "r") == 0)
                             {
                                 // Refresh the list
+                                print_chat_header();
                                 client->state = 5;
                             }
                             else
@@ -490,7 +534,7 @@ int client_handle()
                         }
 
                         client->state = 3;
-                        fprintfBlue(stdout,"Enter your message (q to quit, r to refresh list): \n");
+                        fprintfBlue(stdout,"Enter your message (q to quit application, r to refresh list): \n");
                     }
                     if(client->state == 4)
                     {
@@ -519,6 +563,11 @@ int client_handle()
                         }
                         client->state = 1;
                     }
+                    if(client->state == 6)
+                    {
+                        //Cleanup the Code and Exit
+                        return 0;
+                    }
 
                 }
 
@@ -531,6 +580,8 @@ int client_handle()
  * @brief Main Function
  * 
  * @return int 
+ * @callgraph 
+ * @callergraph
  */
 int main()
 {
@@ -566,7 +617,7 @@ int main()
         exit(1);
     }
 
-
+    debugLog1_destr("Exiting Code\n");
 
 
     return 0;
