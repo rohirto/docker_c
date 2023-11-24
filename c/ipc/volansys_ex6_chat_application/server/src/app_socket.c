@@ -28,6 +28,7 @@
  * @param buf unsigned char* buffer to be sent
  * @param len int* no of bytes to be sent, updated with actual no of bytes
  * @return int -1 on failure, 0 on success
+ * @callergraph
  */
 int sendall(int s, unsigned char *buf, int *len)
 {
@@ -61,6 +62,7 @@ int sendall(int s, unsigned char *buf, int *len)
  * @returns -1 on failure or 0 on success
  * 
  * @paragraph - to check if socket is closed on other side, just check the *len, if it is zero then connection was closed
+ * @callergraph
 */
 int recvall(int s, void *buf, int *len)
 {
@@ -88,6 +90,7 @@ int recvall(int s, void *buf, int *len)
  * 
  * @param fd file descriptor of socket
  * @return int 0 on success, -1 on failure
+ * @callergraph
  */
 int make_sock_nonblocking(int fd)
 {
@@ -104,6 +107,7 @@ int make_sock_nonblocking(int fd)
  * @brief Get the server context object
  * 
  * @return server_cnxt* 
+ * @callergraph
  */
 server_cnxt* get_server_context()
 {
@@ -115,6 +119,7 @@ server_cnxt* get_server_context()
  * @brief check if the client is still connected or not
  * @param int socket - file descriptor of the client socket 
  * @returns -1 on closed socket, 1 on active socket
+ * @callergraph
 */
 int check_connection(int socket)
 {
@@ -133,6 +138,7 @@ int check_connection(int socket)
  * @brief Soft error handling on sockets, no exit, just print errorno
  * 
  * @param message Message to be printed
+ * @callergraph
  */
 void soft_error_handle(const char* message)
 {
@@ -146,6 +152,7 @@ void soft_error_handle(const char* message)
  * @brief Hard error handling on sockets, exit with EXIT failure mentioned
  * 
  * @param message Message to be printed on exit
+ * @callergraph
  */
 void hard_error_handle(const char* message)
 {
@@ -162,8 +169,10 @@ void hard_error_handle(const char* message)
  * @param format the format in which variable args are passed, eg "sh" -> string and signed int
  * @param ...  Variable arguments
  * @return int 0 on success -1 on failure
+ * @callgraph
+ * @callergraph
  * 
- *  Packet Protocol
+ * @paragraph Packet Protocol
  *  |Packet Type 1 Byte| len 1 Byte | Body - Max 128 Bytes |
  *  
  *  Max 130 Bytes packet can be there
