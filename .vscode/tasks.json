@@ -169,6 +169,48 @@
             }
         },
         {
+            "label": "Build C Project with Makefile",
+            "type": "shell",
+            "command": "make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${fileDirname}/../"
+              }
+        },
+        {
+            "label": "Clean C project with Makefile",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "clean"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "options": {
+                "cwd": "${fileDirname}/../"
+              }
+        },
+        {
+            "label": "Run Project Makefile",
+            "type": "shell",
+            "command": "cd ${fileDirname}/../build && ./a.out",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Run with Valgrind",
             "type": "shell",
             "command": "valgrind",
