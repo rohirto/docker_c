@@ -16,13 +16,13 @@
 #include "app_debug.h"
 
 // ANSI color codes
-#define RED_COLOR "\033[1;31m"
-#define GREEN_COLOR "\033[1;32m"
-#define RESET_COLOR "\033[0m"
-#define BLUE_COLOR "\033[1;34m"
+#define RED_COLOR "\033[1;31m"      /**< Red color Define */
+#define GREEN_COLOR "\033[1;32m"    /**< Green color Define */
+#define RESET_COLOR "\033[0m"       /**< Reset color Define */
+#define BLUE_COLOR "\033[1;34m"     /**< Blue color Define */
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_COLOR_RED     "\x1b[31m"   /**< Ansi Color Red */
+#define ANSI_COLOR_RESET   "\x1b[0m"    /**< Ansi color reset */
 
 // Debug log level 1
 /**
@@ -31,7 +31,7 @@
  * @param format standard format string
  * @param ... variable arguments to be formatted into string
  */
-void debugLog1_constr(const char *format, ...) 
+void _debugLog1_constr(const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
@@ -48,7 +48,7 @@ void debugLog1_constr(const char *format, ...)
  * @param format standard format string
  * @param ... variable arguments to be formatted into string
  */
-void debugLog1_destr(const char *format, ...) 
+void _debugLog1_destr(const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
@@ -67,7 +67,7 @@ void debugLog1_destr(const char *format, ...)
  * @param format standard format string
  * @param ... variable arguments to be formatted into string
  */
-void debugLog2(const char *format, ...) 
+void _debugLog2(const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
@@ -84,7 +84,7 @@ void debugLog2(const char *format, ...)
  * 
  * @param prefix 
  */
-void debugError(const char *prefix)
+void _debugError(const char *prefix)
 {
     fprintf(stderr," ==> %s%s: %s%s\n", RED_COLOR, prefix, strerror(errno), RESET_COLOR);
 
@@ -97,7 +97,7 @@ void debugError(const char *prefix)
  * @param format 
  * @param ... 
  */
-void fprintfBlue(FILE *file, const char *format, ...) 
+void _fprintfBlue(FILE *file, const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
@@ -115,7 +115,7 @@ void fprintfBlue(FILE *file, const char *format, ...)
  * @param format 
  * @param ... 
  */
-void fprintfRed(FILE *file, const char *format, ...) 
+void _fprintfRed(FILE *file, const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
@@ -133,7 +133,7 @@ void fprintfRed(FILE *file, const char *format, ...)
  * @param format 
  * @param ... 
  */
-void fprintfGreen(FILE *file, const char *format, ...) 
+void _fprintfGreen(FILE *file, const char *format, ...) 
 {
     va_list args;
     va_start(args, format);
