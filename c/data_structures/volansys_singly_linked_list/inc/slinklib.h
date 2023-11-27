@@ -1,5 +1,11 @@
-#ifndef LINKLIB_H
-#define LINKLIB_H
+#ifndef SLINKLIB_H
+#define SLINKLIB_H
+
+
+// Sorting method constants
+#define BUBBLE_SORT 1
+#define RADIX_SORT 2
+#define QUICK_SORT 3
 
 // Structure for a node
 typedef struct Node {
@@ -25,6 +31,9 @@ int ReverseList(void* ) ;
 static int RecursiveGetListSize(Node* , int* );
 int GetListSize(void* list, int* );
 void DisplayList(void* );
+void sortList(void* , int );
+
+
 
 
 #endif

@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "linklib.h"
+#include "slinklib.h"
 
 // Example usage
 int main() {
@@ -32,6 +32,32 @@ int main() {
     // Get the size of the list
     GetListSize(list, &length);
     printf("List size: %d\n", length);
+
+    //Sort FFunctions
+    // Adding nodes to the singly linked list
+    InsertNodeAt(list, 40,1);
+    InsertNodeAt(list, 20,1);
+    InsertNodeAt(list, 30,1);
+    InsertNodeAt(list, 10,1);
+
+    printf("Original Singly Linked List: ");
+    DisplayList(list);
+
+     // Sorting the list using Bubble Sort
+    sortList(list, BUBBLE_SORT);
+    printf("\nAfter Bubble Sort: ");
+    DisplayList(list);
+
+    // Sorting the list using Radix Sort
+    sortList(list, RADIX_SORT);
+    printf("\nAfter Radix Sort: ");
+    DisplayList(list);
+
+    
+
+    sortList(list, QUICK_SORT);
+    printf("\nAfter Quick Sort: ");
+    DisplayList(list);
 
     // Delete the list
     DeleteList(list);
