@@ -2,66 +2,66 @@
 FROM ubuntu:latest
 
 # Install essential build tools, GCC, GDB, and other necessary packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update &&  \
+    apt-get install -y wget && \
+    apt-get install -y git \ 
     build-essential \
     gcc \
     g++ \
     gdb \
     make \
     cmake \
-    git \
     valgrind \
     cppcheck \
     libncurses-dev \
     libevent-dev \
     doxygen \
     graphviz \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install required dependencies
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && \
+#    apt-get install -y python3 python3-pip \
+#    && rm -rf /var/lib/apt/lists/*
 
-# Lib ncurses installation
-# RUN apt-get update && \
-#     apt-get install libncurses-dev \
-#     && rm -rf /var/lib/apt/lists/*
+# Download Miniforge installer
+RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname -s)-$(uname -m).sh" -O miniforge.sh
 
-# # Install wget, bash, and other required utilities
-# RUN apt-get update && apt-get install -y wget bash && rm -rf /var/lib/apt/lists/*
+# Make the installer script executable
+RUN chmod +x miniforge.sh
 
-# # Download and install Miniforge
-# RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname -s)-$(uname -m).sh" && \
-#     bash Miniforge3-$(uname -s)-$(uname -m).sh -b && \
-#     rm Miniforge3-$(uname -s)-$(uname -m).sh
+# Run the Miniforge installer
+RUN ./miniforge.sh -b -p /opt/miniforge
 
-# # Set the environment variables for Miniforge
-# ENV PATH="/root/miniforge3/bin:$PATH"
-# ENV CONDA_DEFAULT_ENV=cling
-# ENV CONDA_PREFIX=/root/miniforge3/envs/$CONDA_DEFAULT_ENV
+# Clean up
+RUN rm miniforge.sh
 
-# # Create and activate a Conda environment named 'cling'
-# RUN mamba create -n cling python=3.8 && \
-#     echo "activate cling" >> ~/.bashrc && \
-#     /bin/bash -c "source ~/.bashrc"
+# Add Miniforge to the PATH
+ENV PATH="/opt/miniforge/bin:$PATH"
 
-# # Install JupyterLab and xeus-cling in the 'cling' environment
-# RUN mamba install -n cling -c conda-forge jupyterlab xeus-cling
+# Create a Conda environment named 'cling'
+RUN conda create -n cling python=3.8
 
-# # Install and configure Jupyter kernels for C++11, C++14, and C++17
+# Activate the 'cling' environment
+RUN echo "conda activate cling" >> ~/.bashrc
 
-# # Expose the JupyterLab port
-# EXPOSE 8888
+# Install JupyterLab and xeus-cling in the 'cling' environment
+RUN /bin/bash -c "source activate cling && \
+    conda install -c conda-forge jupyterlab xeus-cling && \
+    conda clean --all -f -y"
 
-# # Start JupyterLab as the default command
-# CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
+# Expose the Jupyter Notebook port
+EXPOSE 8888
+
+# Start Jupyter Notebook with xeus-cling
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--notebook-dir=/notebooks"]
+
+
 # Set the working directory inside the container
 WORKDIR /workspace
 
-# Copy your C/C++ source code and other project files into the container
-# If you have a project directory on your host, you can use a bind mount instead
-# COPY . /workspace
+
 
 # Entry point to keep the container running
-CMD ["tail", "-f", "/dev/null"]
+#CMD ["tail", "-f", "/dev/null"]
