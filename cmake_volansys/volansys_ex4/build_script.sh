@@ -1,16 +1,21 @@
 #!/bin/bash
 
-# Set the path to your CMakeLists.txt file
-CMAKE_FILE_PATH="/workspaces/docker_c/cmake_volansys/volansys_ex4"
+# Create a build directory
+mkdir -p build
+cd build
 
-# Set the path to the directory where you want to build
-BUILD_DIR="/workspaces/docker_c/cmake_volansys/volansys_ex4/build"
+# Run CMake to configure the project
+cmake ..
 
-# Run CMake with the toolchain file
-cmake -DCMAKE_TOOLCHAIN_FILE=${CMAKE_FILE_PATH}/cmake/arm_toolchain.cmake -S ${CMAKE_FILE_PATH} -B ${BUILD_DIR}
+# Build the project using make
+cmake --build .
 
-# Build the project
-cmake --build ${BUILD_DIR}
+# If you want to flash the firmware to your STM32 device, you can add the flashing command here.
+# Example (replace /dev/ttyUSB0 and your_hex_file.hex with your actual values):
+# stm32flash -w ${PROJECT_NAME}.hex -v -g 0x0 -R -i 23,-22,22:-23,23 -b 115200 /dev/ttyUSB0
 
-# Optionally, install the binaries to a target location
-# cmake --install ${BUILD_DIR} --prefix /path/to/installation
+# Optionally, you can install the firmware to a specified directory (e.g., out)
+# make install DESTDIR=out
+
+# Optionally, you can clean the build directory after the build
+# make clean
