@@ -1,6 +1,8 @@
 # Use an official Linux distribution as a base image
 FROM ubuntu:latest
 
+ENV DEBIAN_FRONTEND noninteractive
+
 # Install essential build tools, GCC, GDB, and other necessary packages
 RUN apt-get update &&  \
     apt-get install -y wget && \
@@ -17,6 +19,22 @@ RUN apt-get update &&  \
     libevent-dev \
     doxygen \
     graphviz \
+    stlink-tools \
+    # build tools for openocd
+    libhidapi-hidraw0 \
+    libusb-0.1-4 \
+    libusb-1.0-0 \
+    libhidapi-dev \
+    libusb-1.0-0-dev \
+    libusb-dev \
+    libtool \
+    automake \
+    pkg-config \
+    tclsh \
+    telnet \
+    openocd \ 
+    python3 \
+    bzip2 -y \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -24,6 +42,12 @@ RUN apt-get update &&  \
 #RUN apt-get update && \
 #    apt-get install -y python3 python3-pip \
 #    && rm -rf /var/lib/apt/lists/*
+
+# Install arm-none-eabi compiler
+RUN wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+RUN tar xf gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
+RUN cp -rf gcc-arm-none-eabi-10.3-2021.10/* /usr/local/
+RUN rm -rf gcc-arm-none-eabi-10.3-2021.10
 
 # Download Miniforge installer
 RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname -s)-$(uname -m).sh" -O miniforge.sh
