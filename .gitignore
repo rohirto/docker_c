@@ -15,3 +15,5 @@ cmake_volansys/volansys_ex2/build
 cmake_volansys/step2/build
 cmake_volansys/step3/build
 cmake_volansys/volansys_ex3/build
+cmake_volansys/step4/build
+cmake_volansys/volansys_ex4/build
