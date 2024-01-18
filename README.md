@@ -49,10 +49,14 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 ### Include Folder
 1. Includes all .h files which are used by static and shared libraries or our C libraries
 
-#### C Notebooks
+### C Notebooks
 1. C Notebook can be added to the repo(cling-xeus project). They are just like python Jupyter Notebooks. 
 2. These Notebooks are a combination of C code blocks and markdown blocks, are used to understand the theory behind any programming concept
 3. They have an extension of .ipynb
 4. Select kernel -> Jupyter Kernel -> C++17 
-5. Select Language -> bottom right of the code block -> Select C 
+5. Select Language -> bottom right of the code block -> Select C
+
+### Cross Compilation
+1. Can cross compile C and C++ codes for stm32f1
+2. Debugging capabilities
    
