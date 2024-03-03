@@ -1,0 +1,26 @@
+---
+:source:
+  :path: test
+  :file: test_bit_manipulation.c
+:successes:
+- :test: test_do_bit_man_0
+  :line: 22
+  :message: ''
+  :unity_test_time: 0
+- :test: test_do_bit_man_1
+  :line: 36
+  :message: ''
+  :unity_test_time: 0
+:failures:
+- :test: test_do_bit_man_2
+  :line: 50
+  :message: Function adc_read.  Called more times than expected.
+  :unity_test_time: 0
+:ignores: []
+:counts:
+  :total: 3
+  :passed: 2
+  :failed: 1
+  :ignored: 0
+:stdout: []
+:time: 0.023395299998810515

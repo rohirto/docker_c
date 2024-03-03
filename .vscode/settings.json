@@ -31,7 +31,9 @@
         "slinklib.h": "c",
         "ostream": "cpp",
         "*.in": "cpp",
-        "hello.h": "c"
+        "hello.h": "c",
+        "bit_manipulation.h": "c",
+        "adc.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

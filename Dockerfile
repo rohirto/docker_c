@@ -90,6 +90,8 @@ CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--no
 # Set the working directory inside the container
 WORKDIR /workspace
 
+RUN pip install gcovr
+
 
 
 # Entry point to keep the container running

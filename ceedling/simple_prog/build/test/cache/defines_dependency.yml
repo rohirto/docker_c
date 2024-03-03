@@ -1,0 +1,7 @@
+---
+src/bit_manipulation.c:
+- TEST
+src/adc.c:
+- TEST
+build/test/mocks/mock_adc.c:
+- TEST
