@@ -35,6 +35,8 @@ RUN apt-get update &&  \
     openocd \ 
     python3 \
     bzip2 -y \
+    #ceedling ruby
+    ruby-full \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -42,6 +44,9 @@ RUN apt-get update &&  \
 #RUN apt-get update && \
 #    apt-get install -y python3 python3-pip \
 #    && rm -rf /var/lib/apt/lists/*
+
+#Install Ceedling
+RUN gem install ceedling
 
 # Install arm-none-eabi compiler
 RUN wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2
