@@ -35,7 +35,8 @@
         "bit_manipulation.h": "c",
         "adc.h": "c",
         "example_queue.h": "c",
-        "timers.h": "c"
+        "timers.h": "c",
+        "example_timers.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,
