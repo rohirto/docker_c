@@ -16,6 +16,7 @@
 #include "task.h"			/* Task */
 #include "queue.h"
 #include "timers.h"
+#include "config.h"
 
 extern QueueHandle_t xQueue;
 
