@@ -18,6 +18,8 @@ VPATH           += $(SRCROOT)/Demo/Common
 VPATH			+= $(SRCROOT)/Project/FileIO
 VPATH			+= $(SRCROOT)/Project
 VPATH			+= $(SRCROOT)/Project/example_queue
+VPATH			+= $(SRCROOT)/Project/example_timers
+VPATH			+= $(SRCROOT)/Project/example_semaphore
 
 # FreeRTOS Objects
 C_FILES			+= croutine.c
@@ -60,6 +62,7 @@ C_FILES			+= port.c
 C_FILES			+= main.c
 C_FILES			+= example_queue/example_queue.c
 C_FILES			+= example_timers/example_timers.c
+C_FILES			+= example_semaphore/example_semaphore.c
 #C_FILES			+= taskfunction.c
 # Include Paths
 INCLUDES        += -I$(SRCROOT)/Source/include
@@ -68,6 +71,7 @@ INCLUDES        += -I$(SRCROOT)/Project
 INCLUDES        += -I/usr/include/x86_64-linux-gnu/
 INCLUDES		+= -I$(SRCROOT)/Project/example_queue
 INCLUDES		+= -I$(SRCROOT)/Project/example_timers
+INCLUDES		+= -I$(SRCROOT)/Project/example_semaphore
 # Generate OBJS names
 OBJS = $(patsubst %.c,%.o,$(C_FILES))
 

@@ -95,6 +95,7 @@
 #include "timers.h"
 #include "example_queue.h"
 #include "example_timers.h"
+#include "example_semaphore.h"
 //#include "queue.h"
 /* Examples */
 //#define CH3_TASKMANAGEMENT
@@ -108,8 +109,9 @@ void vTask4(void*);
 
 #endif
 
-#define USE_QUEUES
-#define USE_TIMERS
+//#define USE_QUEUES
+//#define USE_TIMERS
+#define USE_SEMAPHORE
 
 void vApplicationIdleHook(void);
 
@@ -117,6 +119,8 @@ void vApplicationIdleHook(void);
 QueueHandle_t xQueue;
 // Define the software timer handle
 TimerHandle_t xTimer;
+// Define a semaphore handle
+SemaphoreHandle_t xSemaphore;
 
 int main ( void )
 {
@@ -140,6 +144,22 @@ int main ( void )
 #ifdef USE_TIMERS
     // Create the timer task
     xTaskCreate(TimerTask, "TimerTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+#ifdef USE_SEMAPHORE
+    // Create the semaphore
+    vSemaphoreCreateBinary(xSemaphore);
+
+    if(xSemaphore != NULL) {
+        // Create Task 1
+        xTaskCreate(vTask_sem_1, "T1", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+
+        // Create Task 2
+        xTaskCreate(vTask_sem_2, "T2", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    }
+    else
+    {
+        printf("Cannot create Seamphore \n");
+    }
 #endif
 
 
