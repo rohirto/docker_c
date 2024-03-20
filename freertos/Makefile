@@ -17,6 +17,7 @@ VPATH	        += $(SRCROOT)/Source/portable/GCC/POSIX
 VPATH           += $(SRCROOT)/Demo/Common
 VPATH			+= $(SRCROOT)/Project/FileIO
 VPATH			+= $(SRCROOT)/Project
+VPATH			+= $(SRCROOT)/Project/example_queue
 
 # FreeRTOS Objects
 C_FILES			+= croutine.c
@@ -57,12 +58,14 @@ C_FILES			+= port.c
 # Main Object
 #C_FILES			+= queue_rxtx.c
 C_FILES			+= main.c
+C_FILES			+= example_queue/example_queue.c
 #C_FILES			+= taskfunction.c
 # Include Paths
 INCLUDES        += -I$(SRCROOT)/Source/include
 INCLUDES        += -I$(SRCROOT)/Source/portable/GCC/POSIX/
 INCLUDES        += -I$(SRCROOT)/Project
 INCLUDES        += -I/usr/include/x86_64-linux-gnu/
+INCLUDES		+= -I$(SRCROOT)/Project/example_queue
 # Generate OBJS names
 OBJS = $(patsubst %.c,%.o,$(C_FILES))
 

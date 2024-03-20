@@ -91,10 +91,12 @@
 #include <stdlib.h>
 #include "FreeRTOS.h"		/* RTOS firmware */
 #include "task.h"			/* Task */
+#include "queue.h"
 #include "timers.h"
+#include "example_queue.h"
 //#include "queue.h"
 /* Examples */
-#define CH3_TASKMANAGEMENT
+//#define CH3_TASKMANAGEMENT
 
 /* --------------------------------------------- */
 #ifdef CH3_TASKMANAGEMENT
@@ -105,18 +107,33 @@ void vTask4(void*);
 
 #endif
 
+#define USE_QUEUES
+
 void vApplicationIdleHook(void);
+
+// Define the queue handle
+QueueHandle_t xQueue;
 
 int main ( void )
 {
+    
+
 #ifdef CH3_TASKMANAGEMENT
 	/* Creating Two Task Same Priorities and Delay*/
-//	xTaskCreate( vTask1, "Task 1", 1000, NULL, 1, NULL );
-//	xTaskCreate( vTask2, "Task 2", 1000, NULL, 1, NULL );
+	//xTaskCreate( vTask1, "Task 1", 1000, NULL, 1, NULL );
+	//xTaskCreate( vTask2, "Task 2", 1000, NULL, 1, NULL );
 	/* Creating Two Task Same Priorities and DelayUntil*/
 	xTaskCreate( vTask3, "Task 3", 1000, NULL, 1, NULL );
 	xTaskCreate( vTask4, "Task 4", 1000, NULL, 1, NULL );
 #endif
+#ifdef USE_QUEUES
+    // Create the queue
+    xQueue = xQueueCreate(5, sizeof(int));
+    // Create the sender and receiver tasks
+    xTaskCreate(SenderTask, "Sender", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(ReceiverTask, "Receiver", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+
 
 	vTaskStartScheduler();
 	return 0;
