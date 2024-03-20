@@ -52,6 +52,42 @@
             "ignoreFailures": true
           }
         ]
+      },
+      {
+        "name": "FreeRTOS Debug",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${fileDirname}/../FreeRTOS-Sim",
+  
+        //"args": [],  //If no args are needed
+        //"args": ["checkip.dyndns.org"],  //If args needs to be passed
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          },
+          {
+            "description": "Set Disassembly Flavor to Intel",
+            "text": "-gdb-set disassembly-flavor intel",
+            "ignoreFailures": true
+          },
+          {
+            "description": "ignore SIGUSR1 signal",
+            "text": "handle SIGUSR1 nostop noprint pass"
+          },
+          {
+            "description": "ignore SIGALRM signal",
+            "text": "handle SIGALRM nostop noignore noprint"
+          }
+        ]
+
       }
     ],
     "version": "2.0.0"
