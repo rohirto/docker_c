@@ -7,7 +7,7 @@
 int main()
 {
     // Load the shared library
-    void* handle = dlopen("/workspaces/docker_c_cpp/shared_lib/libmylib.so", RTLD_LAZY);
+    void* handle = dlopen("/workspaces/docker_c/shared_lib/libmylib.so", RTLD_LAZY);
 
     if (!handle)
     {
