@@ -14,7 +14,17 @@
 
 // Task 1
 void vTask_sem_1(void *pvParameters) {
+    int semcount = 0;
+#ifdef USE_COUNT_SEMAPHORE
+    xSemaphoreGive(xSemaphore);
+    xSemaphoreGive(xSemaphore);
+    xSemaphoreGive(xSemaphore);
+#endif
+    
     while(1) {
+        semcount = uxSemaphoreGetCount(xSemaphore);
+        printf("Sem Count: %d\n", semcount);
+
         // Attempt to take the semaphore
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
             // Semaphore taken, critical section begins
@@ -35,7 +45,10 @@ void vTask_sem_1(void *pvParameters) {
 
 // Task 2
 void vTask_sem_2(void *pvParameters) {
+    int semcount = 0;
     while(1) {
+        semcount = uxSemaphoreGetCount(xSemaphore);
+        printf("Sem Count: %d\n", semcount);
         // Attempt to take the semaphore
         if(xSemaphoreTake(xSemaphore, portMAX_DELAY) == pdTRUE) {
             // Semaphore taken, critical section begins

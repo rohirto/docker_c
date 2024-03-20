@@ -16,8 +16,11 @@
 #include "queue.h"
 #include "timers.h"
 #include "semphr.h"
+#include "config.h"
+
 
 extern SemaphoreHandle_t xSemaphore;
+
 
 void vTask_sem_1(void *);
 void vTask_sem_2(void *);
