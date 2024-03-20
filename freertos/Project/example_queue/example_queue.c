@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2024
  * 
  */
-
+#include <stdio.h>
 #include "example_queue.h"
 
 // Task that sends data to the queue

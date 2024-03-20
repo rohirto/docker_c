@@ -94,6 +94,7 @@
 #include "queue.h"
 #include "timers.h"
 #include "example_queue.h"
+#include "example_timers.h"
 //#include "queue.h"
 /* Examples */
 //#define CH3_TASKMANAGEMENT
@@ -108,11 +109,14 @@ void vTask4(void*);
 #endif
 
 #define USE_QUEUES
+#define USE_TIMERS
 
 void vApplicationIdleHook(void);
 
 // Define the queue handle
 QueueHandle_t xQueue;
+// Define the software timer handle
+TimerHandle_t xTimer;
 
 int main ( void )
 {
@@ -133,6 +137,11 @@ int main ( void )
     xTaskCreate(SenderTask, "Sender", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     xTaskCreate(ReceiverTask, "Receiver", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
+#ifdef USE_TIMERS
+    // Create the timer task
+    xTaskCreate(TimerTask, "TimerTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+#endif
+
 
 
 	vTaskStartScheduler();
