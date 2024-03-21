@@ -96,6 +96,7 @@
 #include "example_queue.h"
 #include "example_timers.h"
 #include "example_semaphore.h"
+#include "example_mutex.h"
 #include "config.h"
 //#include "queue.h"
 /* Examples */
@@ -120,6 +121,8 @@ QueueHandle_t xQueue;
 TimerHandle_t xTimer;
 // Define a semaphore handle
 SemaphoreHandle_t xSemaphore;
+// Define a mutex handle
+SemaphoreHandle_t xMutex;
 
 
 
@@ -177,6 +180,15 @@ int main ( void )
         printf("Cannot create Seamphore \n");
     }
 
+#endif
+
+#ifdef USE_MUTEX
+// Create a mutex
+    xMutex = xSemaphoreCreateMutex();
+
+    // Create tasks
+    xTaskCreate(vTaskm1, "Task m1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(vTaskm2, "Task m2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
 
 
