@@ -19,10 +19,11 @@ void vTaskt1(void *pvParameters) {
     uint32_t ulNotifiedValue;
     while (1) {
         // Wait for a notification from Task 2 or ISR
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-        // Notification received, get the notified value
-        ulNotifiedValue = ulTaskNotifyTake(pdFALSE, 0);
+        xTaskNotifyWait(0x00, /* Don't clear any notification bits on entry. */
+                        UINT32_MAX, /* Reset the notification value to 0 on exit. */
+                        &ulNotifiedValue, /* Notified value pass out in ulNotifiedValue. */
+                        portMAX_DELAY );  /* Block indefinitely. */
+    
 
         // Task 1 specific actions based on the notified value
         // For example, toggle an LED based on the notified value
@@ -32,13 +33,14 @@ void vTaskt1(void *pvParameters) {
 
 // Task 2
 void vTaskt2(void *pvParameters) {
-    uint32_t ulSensorValue = 0;
+    static uint32_t ulSensorValue = 0;
     while (1) {
         // Task 2 specific actions
         // For example, read sensor data and determine the notified value
         ulSensorValue++;
         // Notify Task 1 with a value
-        xTaskNotifyGive(xTask1Handle);
+        xTaskNotify(xTask1Handle, ulSensorValue, eSetValueWithOverwrite);
+        printf("Task 2 Notifying task 1 with value: %u\n", ulSensorValue);
 
         // Task 2 delay before next notification
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -52,7 +54,7 @@ void vExampleISR( int signal ) {
     static uint32_t ulISRValue = 0;
     ulISRValue++;
     // Notify Task 1 with a value from ISR
-    //ulTaskNotifyGiveFromISR(xTask1Handle, ulISRValue, &xHigherPriorityTaskWoken);
+    xTaskNotifyFromISR(xTask1Handle, ulISRValue,eSetValueWithOverwrite, &xHigherPriorityTaskWoken);
 
     // Perform other ISR actions
     printf("Notify from Interrupt: %u\n",ulISRValue );

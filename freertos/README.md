@@ -1,6 +1,6 @@
 # FreeRTOS Simulator for POSIX Linux
 
-This project is intended to simulate FreeRTOS version of v10.0.1
+This project is intended to simulate FreeRTOS version of V11.0.0
 
 It is a clone of this repository: [LINK](https://github.com/pmvanker/pmvankerFreeRTOS)
 
