@@ -16,6 +16,7 @@ TaskHandle_t xTask1Handle, xTask2Handle;
 
 // Task 1
 void vTaskt1(void *pvParameters) {
+    (void) pvParameters;
     uint32_t ulNotifiedValue;
     while (1) {
         // Wait for a notification from Task 2 or ISR
@@ -33,6 +34,7 @@ void vTaskt1(void *pvParameters) {
 
 // Task 2
 void vTaskt2(void *pvParameters) {
+    (void) pvParameters;
     static uint32_t ulSensorValue = 0;
     while (1) {
         // Task 2 specific actions
@@ -50,6 +52,7 @@ void vTaskt2(void *pvParameters) {
 #ifdef USE_INTERRUPT
 // ISR
 void vExampleISR( int signal ) {
+    (void) signal;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     static uint32_t ulISRValue = 0;
     ulISRValue++;

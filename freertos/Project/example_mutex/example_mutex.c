@@ -12,8 +12,12 @@
 #include <stdio.h>
 #include "example_mutex.h"
 
+// Define a mutex handle
+SemaphoreHandle_t xMutex;
+
 // Task 1
 void vTaskm1(void *pvParameters) {
+    (void) pvParameters;
     while (1) {
         // Attempt to take the mutex
         if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
@@ -32,6 +36,7 @@ void vTaskm1(void *pvParameters) {
 
 // Task 2
 void vTaskm2(void *pvParameters) {
+    (void) pvParameters;
     while (1) {
         // Attempt to take the mutex
         if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {

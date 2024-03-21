@@ -120,16 +120,6 @@ void vApplicationIdleHook(void);
 
 
 
-// Define the queue handle
-QueueHandle_t xQueue;
-// Define the software timer handle
-TimerHandle_t xTimer;
-// Define a semaphore handle
-SemaphoreHandle_t xSemaphore;
-// Define a mutex handle
-SemaphoreHandle_t xMutex;
-
-
 
 int main ( void )
 {

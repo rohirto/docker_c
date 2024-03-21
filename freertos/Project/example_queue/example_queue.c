@@ -11,8 +11,12 @@
 #include <stdio.h>
 #include "example_queue.h"
 
+// Define the queue handle
+QueueHandle_t xQueue;
+
 // Task that sends data to the queue
 void SenderTask(void *pvParameters) {
+    (void) pvParameters;
     int data = 0;
 
     while (1) {
@@ -30,6 +34,7 @@ void SenderTask(void *pvParameters) {
 
 // Task that receives data from the queue
 void ReceiverTask(void *pvParameters) {
+    (void) pvParameters;
     int receivedData;
 
     while (1) {

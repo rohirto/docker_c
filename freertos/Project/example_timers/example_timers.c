@@ -11,16 +11,19 @@
 #include <stdio.h>
 #include "example_timers.h"
 
-
+// Define the software timer handle
+TimerHandle_t xTimer;
 
 // Timer callback function
-void TimerCallback(TimerHandle_t xTimer) {
+void TimerCallback(TimerHandle_t xTimer_local) {
+    (void) xTimer_local;
     // Perform actions when the timer expires
     printf("Timer expired!\n");
 }
 
 // Task that creates the software timer
 void TimerTask(void *pvParameters) {
+    (void) pvParameters;
     // Create the software timer with a period of 1000 milliseconds
     xTimer = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, 0, TimerCallback);
 

@@ -12,8 +12,12 @@
 #include <stdio.h>
 #include "example_semaphore.h"
 
+// Define a semaphore handle
+SemaphoreHandle_t xSemaphore;
+
 // Task 1
 void vTask_sem_1(void *pvParameters) {
+    (void) pvParameters;
     int semcount = 0;
 #ifdef USE_COUNT_SEMAPHORE
     xSemaphoreGive(xSemaphore);
@@ -45,6 +49,7 @@ void vTask_sem_1(void *pvParameters) {
 
 // Task 2
 void vTask_sem_2(void *pvParameters) {
+    (void) pvParameters;
     int semcount = 0;
     while(1) {
         semcount = uxSemaphoreGetCount(xSemaphore);
