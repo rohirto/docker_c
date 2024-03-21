@@ -59,4 +59,12 @@ Using Docker and VSCode. On windows need to install the Docker Windows software.
 ### Cross Compilation
 1. Can cross compile C and C++ codes for stm32f1
 2. Debugging capabilities
+
+### Ceedling Test Suite
+1. Ceedling test suite Tutorial 
+2. Unit testing for C programs
+
+### FreeRTOS
+1. FreeRTOS POSIX GCC port, ie simulating FreeRTOS in Linux Systems
+2. Need to make changes to Makefile after adding/removing any module in Project
    

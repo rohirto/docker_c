@@ -39,7 +39,9 @@
         "example_timers.h": "c",
         "example_semaphore.h": "c",
         "example_mutex.h": "c",
-        "config.h": "c"
+        "config.h": "c",
+        "example_task_notify.h": "c",
+        "semphr.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

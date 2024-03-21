@@ -89,6 +89,8 @@
 /* Standard includes. */
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include "FreeRTOS.h"		/* RTOS firmware */
 #include "task.h"			/* Task */
 #include "queue.h"
@@ -97,6 +99,7 @@
 #include "example_timers.h"
 #include "example_semaphore.h"
 #include "example_mutex.h"
+#include "example_task_notify.h"
 #include "config.h"
 //#include "queue.h"
 /* Examples */
@@ -115,6 +118,8 @@ void vTask4(void*);
 
 void vApplicationIdleHook(void);
 
+
+
 // Define the queue handle
 QueueHandle_t xQueue;
 // Define the software timer handle
@@ -129,7 +134,10 @@ SemaphoreHandle_t xMutex;
 int main ( void )
 {
     
-
+#ifdef USE_INTERRUPT
+    /* SIGINT is not blocked by the posix port */
+    signal( SIGINT, vExampleISR );
+#endif
 #ifdef CH3_TASKMANAGEMENT
 	/* Creating Two Task Same Priorities and Delay*/
 	//xTaskCreate( vTask1, "Task 1", 1000, NULL, 1, NULL );
@@ -191,6 +199,14 @@ int main ( void )
     xTaskCreate(vTaskm2, "Task m2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
 
+#ifdef USE_TASK_NOTIFY
+// Create Task 1
+    xTaskCreate(vTaskt1, "Task t1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xTask1Handle);
+
+    // Create Task 2
+    xTaskCreate(vTaskt2, "Task t2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xTask2Handle);
+#endif
+
 
 
 	vTaskStartScheduler();
@@ -249,4 +265,6 @@ void vApplicationIdleHook(void)
 {
 //	printf("Idle\r\n");
 }
+
+
 /*-----------------------------------------------------------*/

@@ -12,14 +12,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-
+#define USE_INTERRUPT
 //#define USE_QUEUES
 //#define USE_TIMERS
-#define USE_SEMAPHORE
+//#define USE_SEMAPHORE
 #ifndef USE_SEMAPHORE
-#define USE_COUNT_SEMAPHORE  //Use either Binary sem or Counting sem
+//#define USE_COUNT_SEMAPHORE  //Use either Binary sem or Counting sem
 
 #endif
 #define USE_MUTEX
+#define USE_TASK_NOTIFY
 
 #endif
