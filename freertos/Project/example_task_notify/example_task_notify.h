@@ -20,7 +20,6 @@
 
 extern TaskHandle_t xTask1Handle, xTask2Handle;
 
-void vExampleISR( int signal );
 void vTaskt2(void *pvParameters);
 void vTaskt1(void *pvParameters);
 #endif

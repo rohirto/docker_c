@@ -21,6 +21,10 @@
 
 #endif
 //#define USE_MUTEX
-#define USE_TASK_NOTIFY
+//#define USE_TASK_NOTIFY
+#define USE_EVENT_GROUP
+
+
+void vExampleISR( int signal );
 
 #endif

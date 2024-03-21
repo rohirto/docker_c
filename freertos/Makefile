@@ -66,6 +66,7 @@ C_FILES			+= example_timers/example_timers.c
 C_FILES			+= example_semaphore/example_semaphore.c
 C_FILES			+= example_mutex/example_mutex.c
 C_FILES			+= example_task_notify/example_task_notify.c
+C_FILES			+= example_event_group/example_event_group.c
 #C_FILES			+= taskfunction.c
 # Include Paths
 INCLUDES        += -I$(SRCROOT)/Source/include
@@ -77,6 +78,7 @@ INCLUDES		+= -I$(SRCROOT)/Project/example_timers
 INCLUDES		+= -I$(SRCROOT)/Project/example_semaphore
 INCLUDES		+= -I$(SRCROOT)/Project/example_mutex
 INCLUDES		+= -I$(SRCROOT)/Project/example_task_notify
+INCLUDES		+= -I$(SRCROOT)/Project/example_event_group
 # Generate OBJS names
 OBJS = $(patsubst %.c,%.o,$(C_FILES))
 
@@ -97,7 +99,7 @@ CWARNS += -Wuninitialized
 CWARNS += -Wunknown-pragmas
 CWARNS += -Wunused-function
 CWARNS += -Wunused-label
-#CWARNS += -Wunused-parameter
+CWARNS += -Wunused-parameter
 CWARNS += -Wunused-value
 CWARNS += -Wunused-variable
 CWARNS += -Wmissing-prototypes

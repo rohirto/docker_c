@@ -49,20 +49,3 @@ void vTaskt2(void *pvParameters) {
     }
 }
 
-#ifdef USE_INTERRUPT
-// ISR
-void vExampleISR( int signal ) {
-    (void) signal;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    static uint32_t ulISRValue = 0;
-    ulISRValue++;
-    // Notify Task 1 with a value from ISR
-    xTaskNotifyFromISR(xTask1Handle, ulISRValue,eSetValueWithOverwrite, &xHigherPriorityTaskWoken);
-
-    // Perform other ISR actions
-    printf("Notify from Interrupt: %u\n",ulISRValue );
-
-    // Check if a higher priority task was woken
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-#endif

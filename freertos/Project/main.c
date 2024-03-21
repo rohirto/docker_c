@@ -100,6 +100,7 @@
 #include "example_semaphore.h"
 #include "example_mutex.h"
 #include "example_task_notify.h"
+#include "example_event_group.h"
 #include "config.h"
 //#include "queue.h"
 /* Examples */
@@ -197,6 +198,16 @@ int main ( void )
     xTaskCreate(vTaskt2, "Task t2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xTask2Handle);
 #endif
 
+#ifdef USE_EVENT_GROUP
+    // Create an event group
+    eventGroup = xEventGroupCreate();
+
+    // Create tasks
+    xTaskCreate(vTaskeg1, "Taskeg1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(vTaskeg2, "Taskeg2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+
+#endif
+
 
 
 	vTaskStartScheduler();
@@ -256,5 +267,31 @@ void vApplicationIdleHook(void)
 //	printf("Idle\r\n");
 }
 
+
+#ifdef USE_INTERRUPT
+// ISR
+void vExampleISR( int signal ) {
+    (void) signal;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+#ifdef USE_TASK_NOTIFY
+    static uint32_t ulISRValue = 0;
+    ulISRValue++;
+    // Notify Task 1 with a value from ISR
+    xTaskNotifyFromISR(xTask1Handle, ulISRValue,eSetValueWithOverwrite, &xHigherPriorityTaskWoken);
+
+    // Perform other ISR actions
+    printf("Notify from Interrupt: %u\n",ulISRValue );
+
+#endif
+#ifdef USE_EVENT_GROUP
+    // Set event bits from ISR
+    xEventGroupSetBitsFromISR(eventGroup, EVENT_BIT_1 | EVENT_BIT_2, &xHigherPriorityTaskWoken);
+
+#endif
+
+    // Check if a higher priority task was woken
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+#endif
 
 /*-----------------------------------------------------------*/

@@ -41,7 +41,8 @@
         "example_mutex.h": "c",
         "config.h": "c",
         "example_task_notify.h": "c",
-        "semphr.h": "c"
+        "semphr.h": "c",
+        "example_event_group.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,
