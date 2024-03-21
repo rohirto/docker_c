@@ -281,6 +281,45 @@
             "options": {
                 "externalTerminal": true
             }
+        },
+        {
+            "label": "Build FreeRTOS Project",
+            "type": "shell",
+            "command": "cd ${fileDirname}/../ && make",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "options": {
+                "externalTerminal": true
+            }
+        },
+        {
+            "label": "Clean FreeRTOS Project",
+            "type": "shell",
+            "command": "cd ${fileDirname}/../ && make clean",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "options": {
+                "externalTerminal": true
+            }
+        },
+        {
+            "label": "Run FreeRTOS Project",
+            "type": "shell",
+            "command": "cd ${fileDirname}/../ && ./FreeRTOS-Sim",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "options": {
+                "externalTerminal": true
+            }
         }
     ],
     "version": "2.0.0"
