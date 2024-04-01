@@ -39,6 +39,8 @@ RUN apt-get update &&  \
     ruby-full \
     #freertos simulator dependency
     libc6-dev-i386 \
+    # protobufs
+    protobuf-compiler \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
