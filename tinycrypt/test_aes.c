@@ -9,7 +9,7 @@
  * 
  * Need to statically link the tinycrpyt library to access aes related functions
  * 
- * 
+ * gcc test_aes.c -o test_aes.out -Llib -ltinycrypt
  * 
  */
 #include <stdio.h>
