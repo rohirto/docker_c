@@ -43,6 +43,8 @@ RUN apt-get update &&  \
     protobuf-compiler \
     #mbedtls
     libmbedtls-dev \
+    #lwip-linux
+    libpcap-dev \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

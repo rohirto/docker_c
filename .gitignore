@@ -19,3 +19,7 @@ cmake_volansys/step4/build
 cmake_volansys/volansys_ex4/build
 freertos/FreeRTOS-Sim
 mbedtls/build
+lwip-linux/Debug/lwip-2.0.2
+lwip-linux/Debug/lwip-linux
+*.o
+*.a
