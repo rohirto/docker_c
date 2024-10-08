@@ -320,7 +320,32 @@
             "options": {
                 "externalTerminal": true
             }
-        }
+        },
+        {
+            "label": "Build mbedtls C program",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "-I/workspaces/docker_c/mbedtls/examples/common",
+                "${file}",
+                "/workspaces/docker_c/mbedtls/examples/common/circular_buffer_for_ssl_read.c",
+                "-o",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-lmbedtls",
+                "-lmbedx509",
+                "-lmbedcrypto"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+            "detail": "Using mbedtls lib."
+        },
     ],
     "version": "2.0.0"
 }

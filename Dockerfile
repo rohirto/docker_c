@@ -41,6 +41,8 @@ RUN apt-get update &&  \
     libc6-dev-i386 \
     # protobufs
     protobuf-compiler \
+    #mbedtls
+    libmbedtls-dev \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
