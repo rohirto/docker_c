@@ -24,6 +24,8 @@
 //#define USE_TASK_NOTIFY
 #define USE_EVENT_GROUP
 
+#define USE_RECURSIVE_MUTEX
+
 
 void vExampleISR( int signal );
 

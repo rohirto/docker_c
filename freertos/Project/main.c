@@ -101,6 +101,7 @@
 #include "example_mutex.h"
 #include "example_task_notify.h"
 #include "example_event_group.h"
+#include "example_recursive_mutex.h"
 #include "config.h"
 //#include "queue.h"
 /* Examples */
@@ -206,6 +207,18 @@ int main ( void )
     xTaskCreate(vTaskeg1, "Taskeg1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     xTaskCreate(vTaskeg2, "Taskeg2", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
+#endif
+
+#ifdef USE_RECURSIVE_MUTEX
+    xRecursiveMutex = xSemaphoreCreateRecursiveMutex();
+    if(xRecursiveMutex == NULL)
+    {
+        printf("Failed to create the recursive Mutex.\n");
+        return 1;
+    }
+
+    xTaskCreate(TaskRM_A, "Task A", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(TaskRM_B, "Task B", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
 
 
