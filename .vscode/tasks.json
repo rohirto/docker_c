@@ -30,9 +30,9 @@
                 "reveal": "always",
                 "panel": "new"
             },
-            "options": {
-                "externalTerminal": true
-            },
+            // "options": {
+            //     "externalTerminal": true
+            // },
             "detail": "without any arguments passed"
         },
         {
@@ -278,9 +278,9 @@
                 "reveal": "always",
                 "panel": "shared"
             },
-            "options": {
-                "externalTerminal": true
-            }
+            // "options": {
+            //     "externalTerminal": true
+            // }
         },
         {
             "label": "Build FreeRTOS Project",
@@ -291,9 +291,9 @@
                 "reveal": "always",
                 "panel": "shared"
             },
-            "options": {
-                "externalTerminal": true
-            }
+            // "options": {
+            //     "externalTerminal": true
+            // }
         },
         {
             "label": "Clean FreeRTOS Project",
@@ -304,9 +304,9 @@
                 "reveal": "always",
                 "panel": "shared"
             },
-            "options": {
-                "externalTerminal": true
-            }
+            // "options": {
+            //     "externalTerminal": true
+            // }
         },
         {
             "label": "Run FreeRTOS Project",
@@ -317,9 +317,9 @@
                 "reveal": "always",
                 "panel": "shared"
             },
-            "options": {
-                "externalTerminal": true
-            }
+            // "options": {
+            //     "externalTerminal": true
+            // }
         },
         {
             "label": "Build mbedtls C program",
