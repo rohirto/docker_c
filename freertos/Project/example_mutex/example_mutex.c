@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include "example_mutex.h"
 
+// Static variable to hold the semaphore's data structure
+StaticSemaphore_t xMutexBuffer;
+
+
 // Define a mutex handle
 SemaphoreHandle_t xMutex;
 

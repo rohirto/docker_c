@@ -20,11 +20,14 @@
 //#define USE_COUNT_SEMAPHORE  //Use either Binary sem or Counting sem
 
 #endif
-//#define USE_MUTEX
+#define USE_MUTEX
+#ifdef USE_MUTEX
+#define USE_STATIC_MUTEX
+#endif
 //#define USE_TASK_NOTIFY
 #define USE_EVENT_GROUP
 
-#define USE_RECURSIVE_MUTEX
+//#define USE_RECURSIVE_MUTEX
 
 
 void vExampleISR( int signal );

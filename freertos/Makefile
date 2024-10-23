@@ -22,6 +22,7 @@ VPATH			+= $(SRCROOT)/Project/example_timers
 VPATH			+= $(SRCROOT)/Project/example_semaphore
 VPATH			+= $(SRCROOT)/Project/example_mutex
 VPATH			+= $(SRCROOT)/Project/example_recursive_mutex
+VPATH			+= $(SRCROOT)/Project/example_static_memory_allocation
 
 # FreeRTOS Objects
 C_FILES			+= croutine.c
@@ -69,6 +70,7 @@ C_FILES			+= example_mutex/example_mutex.c
 C_FILES			+= example_task_notify/example_task_notify.c
 C_FILES			+= example_event_group/example_event_group.c
 C_FILES			+= example_recursive_mutex/example_recursive_mutex.c
+C_FILES			+= example_static_memory_allocation/example_static_memory_allocation.c
 #C_FILES			+= taskfunction.c
 # Include Paths
 INCLUDES        += -I$(SRCROOT)/Source/include
@@ -82,6 +84,7 @@ INCLUDES		+= -I$(SRCROOT)/Project/example_mutex
 INCLUDES		+= -I$(SRCROOT)/Project/example_task_notify
 INCLUDES		+= -I$(SRCROOT)/Project/example_event_group
 INCLUDES		+= -I$(SRCROOT)/Project/example_recursive_mutex
+INCLUDES		+= -I$(SRCROOT)/Project/example_static_memory_allocation
 # Generate OBJS names
 OBJS = $(patsubst %.c,%.o,$(C_FILES))
 

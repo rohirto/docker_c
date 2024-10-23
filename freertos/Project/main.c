@@ -184,7 +184,12 @@ int main ( void )
 
 #ifdef USE_MUTEX
 // Create a mutex
+    #ifndef USE_STATIC_MUTEX
     xMutex = xSemaphoreCreateMutex();
+    #else
+    // Create the static mutex
+    xMutex = xSemaphoreCreateMutexStatic(&xMutexBuffer);
+    #endif
 
     // Create tasks
     xTaskCreate(vTaskm1, "Task m1", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);

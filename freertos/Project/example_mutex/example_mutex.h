@@ -22,7 +22,7 @@
 
 // Define a mutex handle
 extern SemaphoreHandle_t xMutex;
-
+extern StaticSemaphore_t xMutexBuffer;
 
 void vTaskm1(void *pvParameters);
 void vTaskm2(void *pvParameters);
