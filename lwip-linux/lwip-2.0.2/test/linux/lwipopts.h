@@ -67,6 +67,15 @@
 /* Minimal changes to opt.h required for etharp unit tests: */
 #define ETHARP_SUPPORT_STATIC_ENTRIES   1
 
+//DNS
+#define LWIP_DNS                   1   // Enable DNS
+#define DNS_TABLE_SIZE             4   // Number of entries in the DNS table (can be adjusted)
+#define DNS_MAX_NAME_LENGTH        256 // Maximum length of DNS name
+#define DNS_MAX_SERVERS            2   // Maximum number of DNS servers
+#define DNS_DOES_NAME_CHECK        1   // Enable DNS name checking
+#define LWIP_RAND() ((u32_t)rand())
+
+
 /* ---------- ARP options ---------- */
 //#define LWIP_ARP                1
 //#define ARP_TABLE_SIZE          10

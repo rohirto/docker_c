@@ -45,6 +45,10 @@ RUN apt-get update &&  \
     libmbedtls-dev \
     #lwip-linux
     libpcap-dev \
+    #cpp 32 bit libs
+    g++-multilib \
+    libc6-dev-i386 \
+    lib32stdc++6 \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

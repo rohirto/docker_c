@@ -23,6 +23,7 @@ VPATH			+= $(SRCROOT)/Project/example_semaphore
 VPATH			+= $(SRCROOT)/Project/example_mutex
 VPATH			+= $(SRCROOT)/Project/example_recursive_mutex
 VPATH			+= $(SRCROOT)/Project/example_static_memory_allocation
+VPATH			+= $(SRCROOT)/Project/example_cpp_task
 
 # FreeRTOS Objects
 C_FILES			+= croutine.c
@@ -62,7 +63,7 @@ C_FILES			+= port.c
 #
 # Main Object
 #C_FILES			+= queue_rxtx.c
-C_FILES			+= main.c
+# C_FILES			+= main.c
 C_FILES			+= example_queue/example_queue.c
 C_FILES			+= example_timers/example_timers.c
 C_FILES			+= example_semaphore/example_semaphore.c
@@ -71,7 +72,10 @@ C_FILES			+= example_task_notify/example_task_notify.c
 C_FILES			+= example_event_group/example_event_group.c
 C_FILES			+= example_recursive_mutex/example_recursive_mutex.c
 C_FILES			+= example_static_memory_allocation/example_static_memory_allocation.c
-#C_FILES			+= taskfunction.c
+
+CXX_FILES			+= example_cpp_task/example_cpp_task.cpp  # Added C++ source file
+CXX_FILES			+= main.cpp  # Added C++ source file
+
 # Include Paths
 INCLUDES        += -I$(SRCROOT)/Source/include
 INCLUDES        += -I$(SRCROOT)/Source/portable/GCC/POSIX/
@@ -85,12 +89,15 @@ INCLUDES		+= -I$(SRCROOT)/Project/example_task_notify
 INCLUDES		+= -I$(SRCROOT)/Project/example_event_group
 INCLUDES		+= -I$(SRCROOT)/Project/example_recursive_mutex
 INCLUDES		+= -I$(SRCROOT)/Project/example_static_memory_allocation
+INCLUDES		+= -I$(SRCROOT)/Project/example_cpp_task
+
 # Generate OBJS names
 OBJS = $(patsubst %.c,%.o,$(C_FILES))
+OBJS += $(patsubst %.cpp,%.o,$(CXX_FILES))  # Handle C++ files
 
-######## C Flags ########
+######## C/C++ Flags ########
 
-# Warnings
+# C Compiler Warnings
 CWARNS += -W
 CWARNS += -Wall
 CWARNS += -Wextra
@@ -110,35 +117,29 @@ CWARNS += -Wunused-value
 CWARNS += -Wunused-variable
 CWARNS += -Wmissing-prototypes
 
-#CWARNS += -Wno-unused-function
-
+# C Compiler Flags
 CFLAGS += -m32
 CFLAGS += -DDEBUG=1
-#CFLAGS += -g -DUSE_STDIO=1 -D__GCC_POSIX__=1
 CFLAGS += -g -UUSE_STDIO -D__GCC_POSIX__=1
 ifneq ($(shell uname), Darwin)
 CFLAGS += -pthread
 endif
-
-# MAX_NUMBER_OF_TASKS = max pthreads used in the POSIX port. 
-# Default value is 64 (_POSIX_THREAD_THREADS_MAX), the minimum number required by POSIX.
 CFLAGS += -DMAX_NUMBER_OF_TASKS=300
 
 CFLAGS += $(INCLUDES) $(CWARNS) -O2
 
+# C++ Compiler Flags
+CXXFLAGS += -std=c++11 -fno-exceptions -fno-rtti  # Added here
+CXXFLAGS += $(CFLAGS)  # Inherit CFLAGS
+
 ######## Makefile targets ########
-
-# Rules
-.PHONY : all
-all: FreeRTOS-Sim
-
 
 # Fix to place .o files in ODIR
 _OBJS = $(patsubst %,$(ODIR)/%,$(OBJS))
 
+# Compile C files
 $(ODIR)/%.o: %.c
 	@mkdir -p $(dir $@)
-# If verbose, print gcc execution, else hide
 ifeq ($(verbose),1)
 	@echo ">> Compiling $<"
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -147,12 +148,24 @@ else
 	@$(CC) $(CFLAGS) -c -o $@ $<
 endif
 
+# Compile C++ files
+$(ODIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+ifeq ($(verbose),1)
+	@echo ">> Compiling C++ file: $<"
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+else
+	@echo ">> Compiling C++ file: $(notdir $<)"
+	@$(CXX) $(CXXFLAGS) -c -o $@ $<
+endif
+
+# Linking C and C++ objects
 FreeRTOS-Sim: $(_OBJS)
 	@echo ">> Linking $@..."
 ifeq ($(verbose),1)
-	$(CC) $(CFLAGS) $^ $(LINKFLAGS) $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $^ $(LINKFLAGS) $(LIBS) -lstdc++ -o $@
 else
-	@$(CC) $(CFLAGS) $^ $(LINKFLAGS) $(LIBS) -o $@
+	@$(CXX) $(CXXFLAGS) $^ $(LINKFLAGS) $(LIBS) -lstdc++ -o $@
 endif
 
 	@echo "-------------------------"

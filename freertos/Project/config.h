@@ -20,7 +20,7 @@
 //#define USE_COUNT_SEMAPHORE  //Use either Binary sem or Counting sem
 
 #endif
-#define USE_MUTEX
+//#define USE_MUTEX
 #ifdef USE_MUTEX
 #define USE_STATIC_MUTEX
 #endif

@@ -85,7 +85,8 @@
  *
  */
 
-
+#ifdef __cplusplus
+extern "C" {
 /* Standard includes. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,9 +121,21 @@ void vTask4(void*);
 
 void vApplicationIdleHook(void);
 
+}
+#endif
 
+#include "example_cpp_task.h"
 
+void cpp_task_creator()
+{
+    MyTask myTask;
 
+    myTask.start();
+}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 int main ( void )
 {
     
@@ -226,12 +239,27 @@ int main ( void )
     xTaskCreate(TaskRM_B, "Task B", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
 
+#ifdef __cplusplus
+    MyTask myTask; // Creating the C++ object
+
+    // Start the task using the C++ method
+    myTask.start(); // Start the FreeRTOS task
+#endif
+
 
 
 	vTaskStartScheduler();
 	return 0;
 }
 
+#ifdef __cplusplus
+}
+#endif
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 void vAssertCalled( unsigned long ulLine, const char * const pcFileName )
 {
  	taskENTER_CRITICAL();
@@ -309,6 +337,10 @@ void vExampleISR( int signal ) {
 
     // Check if a higher priority task was woken
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 

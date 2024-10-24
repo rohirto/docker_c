@@ -26,13 +26,13 @@
 #include <lwip/igmp.h>
 
 #define TCP_SERVER_PRIO           TCP_PRIO_MIN
-#define TCP_REMOTE_SERVER_ADDR    ((164 << 24) | (134 << 16) | (168 << 8) | (192))
+#define TCP_REMOTE_SERVER_ADDR    ((83 << 24) | (134 << 16) | (168 << 8) | (192))
 #define TCP_REMOTE_SERVER_PORT    6677
 #define TCP_LOCAL_SERVER_PORT     6677
 
 #define  ECHO_SERVER      1
 #define  TCP_CLIENT       2
-#define  TEST_ID          TCP_CLIENT
+#define  TEST_ID          ECHO_SERVER
 
 err_t net_init(char *ifname);
 void net_quit(void);
