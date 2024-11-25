@@ -45,7 +45,8 @@
         "example_event_group.h": "c",
         "example_recursive_mutex.h": "c",
         "app_logging.h": "c",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "cstdlib": "cpp"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

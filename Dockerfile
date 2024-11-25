@@ -49,6 +49,8 @@ RUN apt-get update &&  \
     g++-multilib \
     libc6-dev-i386 \
     lib32stdc++6 \
+    #cjson
+    libcjson-dev \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

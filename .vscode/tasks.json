@@ -346,6 +346,35 @@
             "group": "build",
             "detail": "Using mbedtls lib."
         },
+        {
+            "label": "Build C program with Installed Libraries",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "-I/workspaces/docker_c/mbedtls/examples/common",
+                "${file}",
+                "/workspaces/docker_c/mbedtls/examples/common/circular_buffer_for_ssl_read.c",
+                "-o",
+                "${fileDirname}/../build/${fileBasenameNoExtension}.out",
+                "-lmbedtls",
+                "-lmbedx509",
+                "-lmbedcrypto",
+                "-lncurses",
+                "-lm",
+                "-lpthread",
+                "-lcjson"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build",
+            "detail": "Using mbedtls lib."
+        },
     ],
     "version": "2.0.0"
 }
