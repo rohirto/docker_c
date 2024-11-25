@@ -12,7 +12,8 @@
         "ms-python.python",
         "cschlosser.doxdocgen",
         "jbenden.c-cpp-flylint",
-        "ms-vscode.makefile-tools"
+        "ms-vscode.makefile-tools",
+        "twxs.cmake"
       ],
       "settings": {
         "terminal.integrated.shell.linux": "/bin/bash",
