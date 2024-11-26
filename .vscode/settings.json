@@ -46,7 +46,13 @@
         "example_recursive_mutex.h": "c",
         "app_logging.h": "c",
         "iostream": "cpp",
-        "cstdlib": "cpp"
+        "cstdlib": "cpp",
+        "log.h": "c",
+        "log_config.h": "c",
+        "log_to_console.h": "c",
+        "freertos.h": "c",
+        "debug_logging.h": "c",
+        "stdarg.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

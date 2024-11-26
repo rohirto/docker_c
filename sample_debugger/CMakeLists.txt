@@ -21,16 +21,35 @@ add_subdirectory(${FREERTOS_KERNEL_PATH})
 
 ## Source Files ##
 file(GLOB SOURCE_FILES
-    *.c
+    ${CMAKE_CURRENT_LIST_DIR}/*.c
+    ${CMAKE_CURRENT_LIST_DIR}/logger/*.c
 )
 
 ## Header Files ##
 file(GLOB HEADER_FILES
-    *.h 
+    ${CMAKE_CURRENT_LIST_DIR}/*.h 
+    ${CMAKE_CURRENT_LIST_DIR}/logger/*.h
 )
 
 ## Main Executable ##
-add_executable(sample_logger ${SOURCE_FILES} ${HEADER_FILES})
+add_executable(sample_logger 
+    "${CMAKE_CURRENT_LIST_DIR}/main.c"
+    "${CMAKE_CURRENT_LIST_DIR}/debug_logging.c"
+    "${CMAKE_CURRENT_LIST_DIR}/debug_logging.h"
+    "${CMAKE_CURRENT_LIST_DIR}/FreeRTOSConfig.h"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log_config.h"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log_to_console.c"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log_to_console.h"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log_to_ringbuffer.c"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log_to_ringbuffer.h"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log.c"
+    "${CMAKE_CURRENT_LIST_DIR}/logger/log.h"
+    )
+
+target_include_directories(sample_logger PRIVATE
+${CMAKE_CURRENT_LIST_DIR}
+${CMAKE_CURRENT_LIST_DIR}/logger
+)
 
 ## Link FreeRTOS-Cpp ##
 target_link_libraries(sample_logger freertos_kernel)

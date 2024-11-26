@@ -49,6 +49,8 @@ void vApplicationIdleHook(void);
 #include "queue.h"
 #include "timers.h"
 
+#include "debug_logging.h"
+
 #ifdef CH3_TASKMANAGEMENT
 void vTask1(void*);
 void vTask2(void*);
@@ -80,23 +82,24 @@ void vAssertCalled( unsigned long ulLine, const char * const pcFileName )
 
 void vTask1(void* parameter)
 {
+    
     while(1){
-        printf("Task 1\n");
-		vTaskDelay(pdMS_TO_TICKS(250));
+        DBGLOG_INFO("Task 1\n");
+		vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 void vTask2(void* parameter)
 {
     while(1){
-        printf("Task 2\n");
-        vTaskDelay(pdMS_TO_TICKS(250));
+        DBGLOG_INFO("Task 2\n");
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 
 
 int main()
 {
-
+    DBGLOG_Init();
     xTaskCreate( vTask1, "Task 1", 1000, NULL, 1, NULL );
 	xTaskCreate( vTask2, "Task 2", 1000, NULL, 1, NULL );
     vTaskStartScheduler();
