@@ -12,5 +12,5 @@
 #pragma once
 
 //Prototypes
-void LOG_InitBackendDebugconsole(void);
-void LOG_DeinitBackendDebugconsole(void);
+void LOGGER_InitLogConsole(void);
+void LOGGER_DeinitLogConsole(void);

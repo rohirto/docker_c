@@ -32,7 +32,7 @@ file(GLOB HEADER_FILES
 )
 
 ## Main Executable ##
-add_executable(sample_logger 
+add_executable(a.out 
     "${CMAKE_CURRENT_LIST_DIR}/main.c"
     "${CMAKE_CURRENT_LIST_DIR}/debug_logging.c"
     "${CMAKE_CURRENT_LIST_DIR}/debug_logging.h"
@@ -46,10 +46,10 @@ add_executable(sample_logger
     "${CMAKE_CURRENT_LIST_DIR}/logger/log.h"
     )
 
-target_include_directories(sample_logger PRIVATE
+target_include_directories(a.out PRIVATE
 ${CMAKE_CURRENT_LIST_DIR}
 ${CMAKE_CURRENT_LIST_DIR}/logger
 )
 
 ## Link FreeRTOS-Cpp ##
-target_link_libraries(sample_logger freertos_kernel)
+target_link_libraries(a.out freertos_kernel)

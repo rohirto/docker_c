@@ -50,7 +50,7 @@
     printf(COLOR_RESET);                                    \
     printf("\n")
 
-LOG_MODULE_DEFINE("Sample Debugger Ring Buffer", LevelTrace);
+extern log_module_t s_LogModuleLogger;
 // Macros to be used with DBGLOG, not directly to SDK PRINTF.
 #define DBGLOG_FATAL(format, ...)   LOG_Printf(&s_LogModuleLogger, LevelFatal, LOG_TIMESTAMP_GET, format, ##__VA_ARGS__);
 #define DBGLOG_ERROR(format, ...)   LOG_Printf(&s_LogModuleLogger, LevelError, LOG_TIMESTAMP_GET, format, ##__VA_ARGS__);

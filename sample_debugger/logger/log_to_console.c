@@ -9,32 +9,44 @@
  * 
  */
 
+//Includes
 #include <stdio.h>
 #include "log.h"
 #include "log_to_console.h"
 
-static void log_init_backend_debugconsole_puts(uint8_t *buffer, size_t length);
+//Prototypes
+static void log_buffer_to_console(uint8_t *buffer, size_t length);
 
+//Global Variables
 static uint8_t initialized;
-LOG_BACKEND_DEFINE(backend_debug_console, log_init_backend_debugconsole_puts, NULL);
+LOG_BACKEND_DEFINE(backend_debug_console, log_buffer_to_console, NULL);
 
-
-static void log_init_backend_debugconsole_puts(uint8_t *buffer, size_t length)
+/**
+ * @brief Private Function to put a buffer to console
+ * 
+ * @param buffer 
+ * @param length 
+ */
+static void log_buffer_to_console(uint8_t *buffer, size_t length)
 {
     if ((0U == initialized) || (0U == length))
     {
         return;
     }
-
+    #if POSIX_ENV
     fwrite(buffer, 1, length, stdout);
-
-    // for (size_t i = 0; i < length; i++)
-    // {
-    //     (void)PUTCHAR((int)buffer[i]);
-    // }
+    #else
+    #if NATIVE_ENV
+    //Buffer Print Function of whatever 
+    #endif
+    #endif
 }
 
-void LOG_InitBackendDebugconsole(void)
+/**
+ * @brief Initilaize the a Log Context to debug Console
+ * 
+ */
+void LOGGER_InitLogConsole(void)
 {
     logger_status_t ret;
     if (initialized > 0U)
@@ -51,7 +63,7 @@ void LOG_InitBackendDebugconsole(void)
     return;
 }
 
-void LOG_DeinitBackendDebugconsole(void)
+void LOGGER_DeinitLogConsole(void)
 {
     logger_status_t ret;
 

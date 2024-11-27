@@ -13,7 +13,7 @@
 #include "log_to_ringbuffer.h"
 #include "debug_logging.h"
 
-
+//Structs
 typedef struct log_backend_ring_buffer
 {
     uint8_t *buffer;
@@ -24,30 +24,31 @@ typedef struct log_backend_ring_buffer
     bool empty;
 } log_backend_ring_buffer_t;
 
+//Prototypes
 static void log_backend_ringbuffer_push(uint8_t *buffer, size_t length);
 static void log_backend_ringbuffer_pop(uint8_t *buffer, size_t length, size_t *outLength);
-static size_t log_backend_ringbuffer_get_free_space(void);
+static size_t ring_buffer_get_freespace(void);
 
-
+//Global Variables
 static log_backend_ring_buffer_t s_logBackendRingBuffer = { 0 };
 
 LOG_BACKEND_DEFINE(backend_ring_buffer, log_backend_ringbuffer_push, log_backend_ringbuffer_pop);
 
 
-static void log_backend_ringbuffer_print_state(void)
+static void print_ringbuffer_state(void)
 {
 #if LOG_BACKEND_RINGBUFFER_DEBUG
     DLOG_INFO("\n  [RingBuffer]:\n");
-    DLOG_INFO("    buffer: 0x%08X\n", s_logBackendRingBuffer.buffer);
-    DLOG_INFO("    max:    %d\n", s_logBackendRingBuffer.max);
-    DLOG_INFO("    head:   %d\n", s_logBackendRingBuffer.head);
-    DLOG_INFO("    tail:   %d\n", s_logBackendRingBuffer.tail);
+    DLOG_INFO("    buffer: %s\n", s_logBackendRingBuffer.buffer);
+    DLOG_INFO("    max:    %zu\n", s_logBackendRingBuffer.max);
+    DLOG_INFO("    head:   %zu\n", s_logBackendRingBuffer.head);
+    DLOG_INFO("    tail:   %zu\n", s_logBackendRingBuffer.tail);
     DLOG_INFO("    empty:  %d\n", s_logBackendRingBuffer.empty);
-    DLOG_INFO("    free:   %d\n", log_backend_ringbuffer_get_free_space());
+    DLOG_INFO("    free:   %zu\n", ring_buffer_get_freespace());
 #endif
 }
 
-static size_t log_backend_ringbuffer_get_free_space(void)
+static size_t ring_buffer_get_freespace(void)
 {
     size_t freeBytes = 0;
 
@@ -99,7 +100,7 @@ static void log_backend_ringbuffer_push(uint8_t *buffer, size_t length)
 #endif
 
     // Get free space.
-    size_t freeSpace = log_backend_ringbuffer_get_free_space();
+    size_t freeSpace = ring_buffer_get_freespace();
 
     // Deal with case where buffer is full...
 
@@ -142,7 +143,7 @@ static void log_backend_ringbuffer_push(uint8_t *buffer, size_t length)
 
     s_logBackendRingBuffer.empty = false;
 
-    log_backend_ringbuffer_print_state();
+    print_ringbuffer_state();
 }
 
 static void log_backend_ringbuffer_pop(uint8_t *buffer, size_t length, size_t *outLength)
@@ -153,7 +154,7 @@ static void log_backend_ringbuffer_pop(uint8_t *buffer, size_t length, size_t *o
     }
 
     size_t toFetch = 0;
-    size_t consumedSpace = s_logBackendRingBuffer.max - log_backend_ringbuffer_get_free_space();
+    size_t consumedSpace = s_logBackendRingBuffer.max - ring_buffer_get_freespace();
 
     // We can only fetch as many bytes as are present in the buffer.
     if (length < consumedSpace)
@@ -200,7 +201,7 @@ static void log_backend_ringbuffer_pop(uint8_t *buffer, size_t length, size_t *o
 
     *outLength = toFetch;
 
-    log_backend_ringbuffer_print_state();
+    print_ringbuffer_state();
 }
 
 void LOG_InitBackendRingbuffer(log_backend_ring_buffer_config_t *config)
@@ -226,7 +227,7 @@ void LOG_InitBackendRingbuffer(log_backend_ring_buffer_config_t *config)
     }
     assert(LOG_Success == ret);
 
-    log_backend_ringbuffer_print_state();
+    print_ringbuffer_state();
 
     return;
 }

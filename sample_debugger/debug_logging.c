@@ -19,7 +19,7 @@
 #define RING_BUFFER_SIZE    0x4000
 #endif
 
-
+LOG_MODULE_DEFINE("Sample Debugger Ring Buffer", LevelTrace);
 static uint8_t s_ringBuffer[RING_BUFFER_SIZE] = { 0 };
 
 log_backend_ring_buffer_config_t s_ringBufferConfig =

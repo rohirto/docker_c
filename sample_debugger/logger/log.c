@@ -37,11 +37,6 @@ typedef void (*PrintfCallback)(char *buf, int32_t *indicator, char val, int len)
 //Global Variables
 static log_context_t s_logContext;
 
-// Example callback implementation
-void log_to_stdout(const char *formattedString, size_t size) 
-{
-    fwrite(formattedString, 1, size, stdout);
-}
 
 static void log_output_low_level(uint8_t *buffer, size_t length)
 {

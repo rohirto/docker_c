@@ -52,7 +52,9 @@
         "log_to_console.h": "c",
         "freertos.h": "c",
         "debug_logging.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "queue.h": "c",
+        "log_to_ringbuffer.h": "c"
     },
     "c-cpp-flylint.clang.enable": false,
     "c-cpp-flylint.cppcheck.enable": true,

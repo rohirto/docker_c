@@ -37,4 +37,9 @@
 #define LOG_TO_SDK_DEBUG_CONSOLE 0
 
 #define LOG_TO_RING_BUFFER              1
-#define LOG_BACKEND_RINGBUFFER_DEBUG    1
+#define LOG_BACKEND_RINGBUFFER_DEBUG    0
+
+#define POSIX_ENV  1
+#if !POSIX_ENV
+#define NATIVE_ENV  1
+#endif

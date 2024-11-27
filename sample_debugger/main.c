@@ -50,6 +50,7 @@ void vApplicationIdleHook(void);
 #include "timers.h"
 
 #include "debug_logging.h"
+#include "log_to_ringbuffer.h"
 
 #ifdef CH3_TASKMANAGEMENT
 void vTask1(void*);
@@ -97,11 +98,40 @@ void vTask2(void* parameter)
 }
 
 
+void LogReaderTask(void *pvParameters)
+{
+    uint8_t buffer[128];
+    size_t fetchedLength = 0;
+
+    while (1)
+    {
+        // Call the ring buffer pop function
+        LOG_Dump(buffer, 128, &fetchedLength);
+
+        // Check if any data was fetched
+        if (fetchedLength > 0)
+        {
+            // Process the data (example: print it)
+            printf("Fetched %d bytes from ring buffer: ", (int)fetchedLength);
+            for (size_t i = 0; i < fetchedLength; i++)
+            {
+                printf("%c", buffer[i]); // Print in hexadecimal format
+            }
+            printf("\n");
+        }
+
+        // Simulate periodic task execution (e.g., 100ms delay)
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+
 int main()
 {
     DBGLOG_Init();
     xTaskCreate( vTask1, "Task 1", 1000, NULL, 1, NULL );
 	xTaskCreate( vTask2, "Task 2", 1000, NULL, 1, NULL );
+    xTaskCreate( LogReaderTask, "Task 3", 1000, NULL, 1, NULL );
     vTaskStartScheduler();
     while(1);
     return 0;

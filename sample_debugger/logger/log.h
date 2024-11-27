@@ -134,7 +134,7 @@ typedef struct log_backend
  * @param name The name string of the log module.
  * @param level The debug level of the log module.
  */
-#define LOG_MODULE_DEFINE(name, level) static log_module_t s_LogModuleLogger = {#name, level};
+#define LOG_MODULE_DEFINE(name, level) log_module_t s_LogModuleLogger = {#name, level};
 
 /*!
  * @brief Writes the fatal level log formatted output to the backend.
