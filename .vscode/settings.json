@@ -54,14 +54,11 @@
         "debug_logging.h": "c",
         "stdarg.h": "c",
         "queue.h": "c",
-        "log_to_ringbuffer.h": "c"
+        "log_to_ringbuffer.h": "c",
+        "stdint.h": "c",
+        "portable.h": "c",
+        "portmacro.h": "c"
     },
-    "c-cpp-flylint.clang.enable": false,
-    "c-cpp-flylint.cppcheck.enable": true,
-    "c-cpp-flylint.flawfinder.enable": false,
-    "c-cpp-flylint.flexelint.enable": false,
-    "c-cpp-flylint.lizard.enable": false,
-    "c-cpp-flylint.pclintplus.enable": false,
     "cmake.configureOnOpen": false,
     "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 
