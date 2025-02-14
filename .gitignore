@@ -23,3 +23,5 @@ lwip-linux/Debug/lwip-2.0.2
 lwip-linux/Debug/lwip-linux
 *.o
 *.a
+**/.cache/
+**/build/

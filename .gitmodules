@@ -1,3 +1,6 @@
 [submodule "sample_debugger/FreeRTOS-Kernel"]
 	path = sample_debugger/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+[submodule "tlfs/thirdparty"]
+	path = tlfs/thirdparty
+	url = https://github.com/mattconte/tlsf.git
